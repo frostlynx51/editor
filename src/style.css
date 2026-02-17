@@ -1,8 +1,8 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
-  background-color: #0f1115;
-  color: #e7e9ee;
+  background-color: #fdf6e3;
+  color: #657b83;
 }
 
 * {
@@ -12,9 +12,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 20%, rgba(70, 80, 120, 0.35), transparent 55%),
-    radial-gradient(circle at 80% 10%, rgba(120, 90, 60, 0.35), transparent 50%),
-    #0f1115;
+  background: #fdf6e3;
 }
 
 #app {
@@ -28,8 +26,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(6px);
+  background: #eee8d5;
+  border-bottom: 2px solid #d3cbb7;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .app-header h1 {
@@ -37,6 +36,7 @@ body {
   font-size: 1.25rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: #586e75;
 }
 
 .header-right {
@@ -47,18 +47,19 @@ body {
 
 .status {
   font-size: 0.9rem;
-  color: #8ff0a4;
+  color: #859900;
+  font-weight: 500;
 }
 
 .status.error {
-  color: #ff8c8c;
+  color: #dc322f;
 }
 
 .save-btn {
   padding: 0.5rem 1.25rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border: none;
+  background: #268bd2;
+  color: #fdf6e3;
+  border: 1px solid #2075b8;
   border-radius: 6px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -66,15 +67,18 @@ body {
   transition: all 0.2s ease;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .save-btn:hover:not(:disabled) {
+  background: #2075b8;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 3px 8px rgba(38, 139, 210, 0.3);
 }
 
 .save-btn:active:not(:disabled) {
   transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .save-btn:disabled {
@@ -84,18 +88,20 @@ body {
 
 .settings-btn {
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #eee8d5;
+  color: #586e75;
+  border: 1px solid #d3cbb7;
   border-radius: 6px;
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .settings-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: #e3ddc3;
   transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
 }
 
 .editor {
@@ -108,7 +114,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 43, 54, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -117,19 +123,19 @@ body {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1a1d2e, #16192b);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #fdf6e3;
+  border: 2px solid #d3cbb7;
   border-radius: 12px;
   padding: 2rem;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
 .modal-content h2 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
-  color: #e7e9ee;
+  color: #586e75;
 }
 
 .form-group {
@@ -140,26 +146,27 @@ body {
   display: block;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: #b8bcc8;
-  font-weight: 500;
+  color: #586e75;
+  font-weight: 600;
 }
 
 .form-group input {
   width: 100%;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #fff;
+  border: 2px solid #d3cbb7;
   border-radius: 6px;
-  color: #e7e9ee;
+  color: #586e75;
   font-size: 0.95rem;
   font-family: "Consolas", "Monaco", monospace;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #268bd2;
+  box-shadow: 0 0 0 3px rgba(38, 139, 210, 0.1);
+  background: #fdf6e3;
 }
 
 .form-actions {
@@ -183,21 +190,24 @@ body {
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: #268bd2;
+  color: #fdf6e3;
+  border: 1px solid #2075b8;
 }
 
 .submit-btn:hover {
+  background: #2075b8;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 3px 8px rgba(38, 139, 210, 0.3);
 }
 
 .cancel-btn {
-  background: rgba(255, 255, 255, 0.05);
-  color: #b8bcc8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #eee8d5;
+  color: #657b83;
+  border: 2px solid #d3cbb7;
 }
 
 .cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #e3ddc3;
+  border-color: #c9c0a7;
 }

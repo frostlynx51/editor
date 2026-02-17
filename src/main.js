@@ -77,7 +77,7 @@ function createEditor(value) {
   editor = monaco.editor.create(editorEl, {
     value,
     language: "markdown",
-    theme: "vs-dark",
+    theme: "vs",
     automaticLayout: true,
     minimap: { enabled: false },
     wordWrap: "on",
