@@ -3,12 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub README Editor</title>
+    <title>GitHub Editor</title>
   </head>
   <body>
     <div id="app">
       <header class="app-header">
-        <h1>GitHub README Viewer</h1>
+        <div class="header-left">
+          <h1>GitHub Editor</h1>
+          <button id="file-selector-btn" class="file-selector-btn" disabled>
+            <span id="current-file">No file selected</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+        </div>
         <div class="header-right">
           <div class="status" id="status">Loading...</div>
           <button id="settings-btn" class="settings-btn">⚙️</button>
@@ -35,6 +41,21 @@
             <button type="submit" class="submit-btn">Save Settings</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div id="file-picker-modal" class="modal" style="display: none;">
+      <div class="modal-content file-picker">
+        <h2>Select File</h2>
+        <div class="search-box">
+          <input type="text" id="file-search" placeholder="Search files..." autocomplete="off" />
+        </div>
+        <div id="file-list" class="file-list">
+          <div class="loading-files">Loading files...</div>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="file-cancel-btn" class="cancel-btn">Cancel</button>
+        </div>
       </div>
     </div>
 

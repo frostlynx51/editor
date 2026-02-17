@@ -8,8 +8,8 @@ export default defineConfig({
         server.middlewares.use(async (req, res, next) => {
           const url = req.url ? req.url.split("?")[0] : "";
           
-          // Handle read endpoint
-          if (url === "/api/readme" && req.method === "POST") {
+          // Handle repository tree endpoint
+          if (url === "/api/tree" && req.method === "POST") {
             let body = "";
             req.on("data", chunk => { body += chunk; });
             req.on("end", async () => {
@@ -30,7 +30,59 @@ export default defineConfig({
                   return;
                 }
 
-                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/README.md`;
+                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/git/trees/HEAD?recursive=1`;
+                const response = await fetch(apiUrl, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github.v3+json",
+                    "User-Agent": "github-readme-editor",
+                  },
+                });
+
+                if (!response.ok) {
+                  const errorBody = await response.text().catch(() => "");
+                  res.statusCode = response.status;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ error: `GitHub API error: ${response.status}`, details: errorBody }));
+                  return;
+                }
+
+                const data = await response.json();
+                res.statusCode = 200;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify(data));
+              } catch (error) {
+                res.statusCode = 500;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: error.message }));
+              }
+            });
+            return;
+          }
+          
+          // Handle file read endpoint
+          if (url === "/api/file" && req.method === "POST") {
+            let body = "";
+            req.on("data", chunk => { body += chunk; });
+            req.on("end", async () => {
+              try {
+                const { repo, token, path } = JSON.parse(body);
+                if (!repo || !token || !path) {
+                  res.statusCode = 400;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ error: "repo, token, and path required" }));
+                  return;
+                }
+
+                const [owner, repoName] = repo.split("/");
+                if (!owner || !repoName) {
+                  res.statusCode = 400;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ error: "Invalid repo format. Use: owner/repo" }));
+                  return;
+                }
+
+                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${path}`;
                 const response = await fetch(apiUrl, {
                   headers: {
                     Authorization: `Bearer ${token}`,
@@ -66,11 +118,11 @@ export default defineConfig({
             req.on("data", chunk => { body += chunk; });
             req.on("end", async () => {
               try {
-                const { repo, token, content } = JSON.parse(body);
-                if (!repo || !token || content === undefined) {
+                const { repo, token, path, content } = JSON.parse(body);
+                if (!repo || !token || !path || content === undefined) {
                   res.statusCode = 400;
                   res.setHeader("Content-Type", "application/json");
-                  res.end(JSON.stringify({ error: "repo, token, and content required" }));
+                  res.end(JSON.stringify({ error: "repo, token, path, and content required" }));
                   return;
                 }
 
@@ -82,7 +134,7 @@ export default defineConfig({
                   return;
                 }
 
-                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/README.md`;
+                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${path}`;
 
                 // First, get current file SHA
                 const getResponse = await fetch(apiUrl, {
@@ -113,7 +165,7 @@ export default defineConfig({
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    message: "Update README.md from editor",
+                    message: `Update ${path} from editor`,
                     content: Buffer.from(content).toString("base64"),
                     sha,
                   }),

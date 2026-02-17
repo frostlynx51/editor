@@ -31,6 +31,12 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.25rem;
@@ -43,6 +49,43 @@ body {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+}
+
+.file-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #fdf6e3;
+  color: #657b83;
+  border: 2px solid #d3cbb7;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: "Consolas", "Monaco", monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 300px;
+}
+
+.file-selector-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #268bd2;
+}
+
+.file-selector-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-selector-btn #current-file {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-selector-btn .dropdown-arrow {
+  font-size: 0.7rem;
+  opacity: 0.6;
 }
 
 .status {
@@ -132,10 +175,88 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
+.modal-content.file-picker {
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .modal-content h2 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
   color: #586e75;
+}
+
+.search-box {
+  margin-bottom: 1rem;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.75rem;
+  background: #fff;
+  border: 2px solid #d3cbb7;
+  border-radius: 6px;
+  color: #586e75;
+  font-size: 0.95rem;
+  font-family: "Consolas", "Monaco", monospace;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #268bd2;
+  box-shadow: 0 0 0 3px rgba(38, 139, 210, 0.1);
+}
+
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 2px solid #d3cbb7;
+  border-radius: 6px;
+  background: #fff;
+  max-height: 400px;
+  margin-bottom: 1rem;
+}
+
+.loading-files {
+  padding: 2rem;
+  text-align: center;
+  color: #93a1a1;
+}
+
+.file-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #eee8d5;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.9rem;
+  color: #586e75;
+  transition: background 0.15s ease;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item:hover {
+  background: #eee8d5;
+}
+
+.file-item.selected {
+  background: #268bd2;
+  color: #fdf6e3;
+}
+
+.file-item .file-path {
+  display: block;
+  color: #93a1a1;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.file-item.selected .file-path {
+  color: rgba(253, 246, 227, 0.7);
 }
 
 .form-group {
