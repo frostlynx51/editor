@@ -1,23 +1,21 @@
 # GitHub README Editor
 
-A minimal editor that loads a hardcoded README.md from GitHub and displays it in Monaco.
+A web-based editor that loads and saves README.md from any GitHub repository using Monaco Editor.
 
 ## Setup
 
-1. Set the `GITHUB_TOKEN` environment variable with a GitHub token that has repo read access.
-2. Install dependencies.
-3. Start the dev server.
+1. Install dependencies: `npm install`
+2. Start dev server: `npm run dev`
+3. On first visit, enter your GitHub repository (format: `owner/repo`) and personal access token.
 
-## Scripts
+## Usage
 
-```bash
-export GITHUB_TOKEN="your_token_here"
-npm install
-npm run dev
-```
+- Settings are stored in browser localStorage
+- Click the ⚙️ icon to change repository or token
+- Edit the README.md and click Save to push changes to GitHub
 
 ## Notes
 
-- The app loads `README.md` from `frostlynx51/Notes` (hardcoded in `vite.config.js`).
-- The GitHub token is used server-side only and never exposed to the browser.
-- Saving is not implemented yet.
+- The GitHub token is stored in localStorage and sent to the server proxy for API calls.
+- For security, consider using a fine-grained token with read/write access only to specific repositories.
+- The server never stores the token; it only proxies requests to GitHub.
