@@ -19,6 +19,7 @@ marked.setOptions({
 });
 
 const statusEl = document.getElementById("status");
+const githubSavedEl = document.getElementById("github-saved-indicator");
 const editorEl = document.getElementById("editor");
 const saveBtn = document.getElementById("save-btn");
 const settingsBtn = document.getElementById("settings-btn");
@@ -41,10 +42,114 @@ let editor = null;
 let settings = null;
 let currentFile = "README.md";
 let allFiles = [];
+let autosaveTimer = null;
+let githubAutosaveTimer = null;
+let githubStatusTimer = null;
+let isSavingToGitHub = false;
+let hasUnsavedChanges = false;
+let lastGithubSavedAt = null;
+let lastSavedContent = "";
+let isLoadingContent = false;
+
+const AUTOSAVE_DEBOUNCE_MS = 1000;
+const GITHUB_AUTOSAVE_INTERVAL_MS = 15 * 60 * 1000;
+const GITHUB_STATUS_REFRESH_MS = 60 * 1000;
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.classList.toggle("error", isError);
+}
+
+function getDraftKey(filePath) {
+  const repoKey = settings?.repo || "unknown";
+  return `github-draft:${repoKey}:${filePath}`;
+}
+
+function getLastSavedKey(filePath) {
+  const repoKey = settings?.repo || "unknown";
+  return `github-last-saved:${repoKey}:${filePath}`;
+}
+
+function loadDraft(filePath) {
+  const stored = localStorage.getItem(getDraftKey(filePath));
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(filePath, content) {
+  const payload = {
+    content,
+    updatedAt: Date.now(),
+  };
+  localStorage.setItem(getDraftKey(filePath), JSON.stringify(payload));
+}
+
+function clearDraft(filePath) {
+  localStorage.removeItem(getDraftKey(filePath));
+}
+
+function formatTimeAgo(ms) {
+  if (ms < 60 * 1000) return "just now";
+  const minutes = Math.floor(ms / (60 * 1000));
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function updateGithubSavedIndicator() {
+  if (!githubSavedEl) return;
+  if (!lastGithubSavedAt) {
+    githubSavedEl.textContent = "Last saved to GitHub: never";
+    return;
+  }
+  const elapsed = Date.now() - lastGithubSavedAt;
+  githubSavedEl.textContent = `Last saved to GitHub: ${formatTimeAgo(elapsed)} ago`;
+}
+
+function startGithubStatusTimer() {
+  if (githubStatusTimer) {
+    clearInterval(githubStatusTimer);
+  }
+  githubStatusTimer = setInterval(updateGithubSavedIndicator, GITHUB_STATUS_REFRESH_MS);
+}
+
+function getEditorMarkdown() {
+  const html = editor.getHTML();
+  return turndownService.turndown(html);
+}
+
+function updateDirtyState(currentContent) {
+  hasUnsavedChanges = currentContent !== lastSavedContent;
+  if (!hasUnsavedChanges) {
+    clearDraft(currentFile);
+  }
+}
+
+function scheduleLocalAutosave() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+  }
+  autosaveTimer = setTimeout(() => {
+    if (!editor || !settings || !currentFile) return;
+    const content = getEditorMarkdown();
+    saveDraft(currentFile, content);
+  }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+function startGithubAutosaveTimer() {
+  if (githubAutosaveTimer) {
+    clearInterval(githubAutosaveTimer);
+  }
+  githubAutosaveTimer = setInterval(() => {
+    if (!hasUnsavedChanges || isSavingToGitHub) return;
+    saveFile({ isAuto: true });
+  }, GITHUB_AUTOSAVE_INTERVAL_MS);
 }
 
 function loadSettings() {
@@ -138,7 +243,7 @@ async function loadRepositoryFiles() {
 
     const data = await response.json();
     allFiles = data.tree
-      .filter(item => item.type === "blob")
+      .filter(item => item.type === "blob" && item.path.toLowerCase().endsWith(".md"))
       .map(item => item.path)
       .sort();
 
@@ -262,6 +367,12 @@ function createEditor(value) {
         class: 'tiptap-editor',
       },
     },
+    onUpdate: () => {
+      if (isLoadingContent) return;
+      const content = getEditorMarkdown();
+      updateDirtyState(content);
+      scheduleLocalAutosave();
+    },
   });
   return editor;
 }
@@ -272,33 +383,40 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-async function saveFile() {
+async function saveFile(options = {}) {
   if (!editor || !settings || !currentFile) return;
+  if (isSavingToGitHub) return;
 
   try {
+    isSavingToGitHub = true;
     saveBtn.disabled = true;
-    setStatus("Saving...");
+    setStatus(options.isAuto ? "Auto-saving to GitHub..." : "Saving...");
 
     const [owner, repoName] = settings.repo.split("/");
     const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${currentFile}`;
     
     // Convert TipTap HTML back to markdown
-    const html = editor.getHTML();
-    const content = turndownService.turndown(html);
+    const content = getEditorMarkdown();
 
     // Check if file exists to get SHA
     const getResponse = await fetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github+json",
+        Accept: "application/json",
         "User-Agent": "github-editor",
       },
     });
 
     let sha = null;
     if (getResponse.ok) {
-      const fileData = await getResponse.json();
-      sha = fileData.sha;
+      const responseText = await getResponse.text();
+      
+      try {
+        const fileData = JSON.parse(responseText);
+        sha = fileData.sha;
+      } catch (e) {
+        throw new Error("Got non-JSON response when fetching file metadata");
+      }
     }
     // If 404, it's a new file, sha can be null
 
@@ -332,13 +450,20 @@ async function saveFile() {
       throw new Error(`Failed to save: ${updateResponse.status} - ${errorBody}`);
     }
 
-    setStatus("Saved successfully");
+    lastSavedContent = content;
+    hasUnsavedChanges = false;
+    lastGithubSavedAt = Date.now();
+    localStorage.setItem(getLastSavedKey(currentFile), String(lastGithubSavedAt));
+    clearDraft(currentFile);
+    updateGithubSavedIndicator();
+    setStatus("Saved to GitHub");
     setTimeout(() => setStatus(`Loaded ${currentFile}`), 2000);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
   } finally {
     saveBtn.disabled = false;
+    isSavingToGitHub = false;
   }
 }
 
@@ -348,6 +473,12 @@ async function loadEditorFile() {
     const content = await fetchFile(currentFile);
 
     setStatus(`Loaded ${currentFile}`);
+    isLoadingContent = true;
+    lastSavedContent = content;
+    hasUnsavedChanges = false;
+    const storedTimestamp = localStorage.getItem(getLastSavedKey(currentFile));
+    lastGithubSavedAt = storedTimestamp ? Number(storedTimestamp) : null;
+    updateGithubSavedIndicator();
     
     if (editor) {
       const htmlContent = marked.parse(content);
@@ -355,6 +486,17 @@ async function loadEditorFile() {
     } else {
       createEditor(content);
     }
+
+    const draft = loadDraft(currentFile);
+    if (draft && draft.content && draft.content !== content) {
+      const draftHtml = marked.parse(draft.content);
+      editor.commands.setContent(draftHtml);
+      lastSavedContent = content;
+      hasUnsavedChanges = true;
+      setStatus(`Restored local autosave for ${currentFile}`);
+    }
+
+    isLoadingContent = false;
     
     saveBtn.disabled = false;
     fileSelectorBtn.disabled = false;
@@ -362,6 +504,7 @@ async function loadEditorFile() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
+    isLoadingContent = false;
   }
 }
 
@@ -441,6 +584,9 @@ function init() {
   } else {
     loadEditorFile();
   }
+
+  startGithubAutosaveTimer();
+  startGithubStatusTimer();
 }
 
 init();

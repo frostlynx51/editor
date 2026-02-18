@@ -51,6 +51,13 @@ body {
   gap: 1.5rem;
 }
 
+.save-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
 .file-selector-btn {
   display: flex;
   align-items: center;
@@ -96,6 +103,12 @@ body {
 
 .status.error {
   color: #dc322f;
+}
+
+.github-saved-indicator {
+  font-size: 0.8rem;
+  color: #93a1a1;
+  font-weight: 500;
 }
 
 .save-btn {
