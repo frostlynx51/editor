@@ -1,13 +1,22 @@
-import * as monaco from "monaco-editor";
+import { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { common, createLowlight } from 'lowlight';
+import { marked } from 'marked';
+import TurndownService from 'turndown';
 import "./style.css";
 
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+const lowlight = createLowlight(common);
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+});
 
-self.MonacoEnvironment = {
-  getWorker() {
-    return new editorWorker();
-  },
-};
+// Configure marked for GitHub-flavored markdown
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+});
 
 const statusEl = document.getElementById("status");
 const editorEl = document.getElementById("editor");
@@ -99,10 +108,12 @@ async function loadRepositoryFiles() {
     const [owner, repoName] = settings.repo.split("/");
     const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/git/trees/HEAD?recursive=1`;
 
-    const response = await fetch("/api/tree", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repo: settings.repo, token: settings.token }),
+    const response = await fetch(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${settings.token}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "github-editor",
+      },
     });
 
     if (!response.ok) {
@@ -165,31 +176,50 @@ function selectFile(filePath) {
 async function fetchFile(filePath) {
   if (!settings) throw new Error("Settings not configured");
 
-  const response = await fetch("/api/file", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repo: settings.repo, token: settings.token, path: filePath }),
+  const [owner, repoName] = settings.repo.split("/");
+  const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${filePath}`;
+
+  const response = await fetch(apiUrl, {
+    headers: {
+      Authorization: `Bearer ${settings.token}`,
+      Accept: "application/vnd.github.raw",
+      "User-Agent": "github-editor",
+    },
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(errorData.error || `Server error: ${response.status}`);
+    throw new Error(`Failed to load file: ${response.status} ${response.statusText}`);
   }
 
   return await response.text();
 }
 
 function createEditor(value) {
-  const language = detectLanguage(currentFile);
-  editor = monaco.editor.create(editorEl, {
-    value,
-    language,
-    theme: "vs",
-    automaticLayout: true,
-    minimap: { enabled: false },
-    wordWrap: "on",
+  // Parse markdown to HTML
+  const htmlContent = marked.parse(value);
+  
+  editor = new Editor({
+    element: editorEl,
+    extensions: [
+      StarterKit,
+      CodeBlockLowlight.configure({
+        lowlight,
+      }),
+    ],
+    content: htmlContent,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor',
+      },
+    },
   });
   return editor;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 async function saveFile() {
@@ -199,16 +229,62 @@ async function saveFile() {
     saveBtn.disabled = true;
     setStatus("Saving...");
 
-    const content = editor.getValue();
-    const response = await fetch("/api/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repo: settings.repo, token: settings.token, path: currentFile, content }),
+    const [owner, repoName] = settings.repo.split("/");
+    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${currentFile}`;
+    
+    // Convert TipTap HTML back to markdown
+    const html = editor.getHTML();
+    const content = turndownService.turndown(html);
+
+    // First, get current file SHA
+    const getResponse = await fetch(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${settings.token}`,
+        Accept: "application/vnd.github+json",  // Changed from v3+json
+        "User-Agent": "github-editor",
+      },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(errorData.error || `Save failed: ${response.status}`);
+    if (!getResponse.ok) {
+      throw new Error(`Failed to get file SHA: ${getResponse.status}`);
+    }
+
+    const responseText = await getResponse.text();
+    console.log("Response:", responseText); // Debug log
+    
+    let fileData;
+    try {
+      fileData = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Received non-JSON response: ${responseText.substring(0, 100)}`);
+    }
+    
+    const sha = fileData.sha;
+
+    // Now update the file
+    // Encode content to base64 (handling UTF-8 properly)
+    const base64Content = btoa(
+      Array.from(new TextEncoder().encode(content), byte => String.fromCharCode(byte)).join('')
+    );
+    
+    const updateResponse = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${settings.token}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "github-editor",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: `Update ${currentFile} from editor`,
+        content: base64Content,
+        sha,
+      }),
+    });
+
+    if (!updateResponse.ok) {
+      const errorBody = await updateResponse.text().catch(() => "");
+      throw new Error(`Failed to save: ${updateResponse.status} - ${errorBody}`);
     }
 
     setStatus("Saved successfully");
@@ -229,7 +305,8 @@ async function loadEditorFile() {
     setStatus(`Loaded ${currentFile}`);
     
     if (editor) {
-      editor.setValue(content);
+      const htmlContent = marked.parse(content);
+      editor.commands.setContent(htmlContent);
     } else {
       createEditor(content);
     }
@@ -299,7 +376,7 @@ function init() {
     
     // Reload editor if it was already loaded
     if (editor) {
-      editor.dispose();
+      editor.destroy();
       editor = null;
     }
     allFiles = []; // Reset file cache
