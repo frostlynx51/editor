@@ -27,7 +27,10 @@ const settingsForm = document.getElementById("settings-form");
 const cancelBtn = document.getElementById("cancel-btn");
 const repoInput = document.getElementById("repo-input");
 const tokenInput = document.getElementById("token-input");
+const dailyFolderInput = document.getElementById("daily-folder-input");
+const dailyFormatInput = document.getElementById("daily-format-input");
 const fileSelectorBtn = document.getElementById("file-selector-btn");
+const dailyNoteBtn = document.getElementById("daily-note-btn");
 const currentFileEl = document.getElementById("current-file");
 const filePickerModal = document.getElementById("file-picker-modal");
 const fileCancelBtn = document.getElementById("file-cancel-btn");
@@ -48,7 +51,13 @@ function loadSettings() {
   const stored = localStorage.getItem("github-settings");
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Add defaults for backwards compatibility
+      return {
+        ...parsed,
+        dailyFolder: parsed.dailyFolder || "Daily Notes",
+        dailyFormat: parsed.dailyFormat || "YYYY-MM-DD"
+      };
     } catch {
       return null;
     }
@@ -56,8 +65,13 @@ function loadSettings() {
   return null;
 }
 
-function saveSettings(repo, token) {
-  settings = { repo, token };
+function saveSettings(repo, token, dailyFolder, dailyFormat) {
+  settings = { 
+    repo, 
+    token, 
+    dailyFolder: dailyFolder || "Daily Notes",
+    dailyFormat: dailyFormat || "YYYY-MM-DD"
+  };
   localStorage.setItem("github-settings", JSON.stringify(settings));
 }
 
@@ -76,6 +90,8 @@ function showSettingsModal() {
   if (settings) {
     repoInput.value = settings.repo;
     tokenInput.value = settings.token;
+    dailyFolderInput.value = settings.dailyFolder || "Daily Notes";
+    dailyFormatInput.value = settings.dailyFormat || "YYYY-MM-DD";
   }
   settingsModal.style.display = "flex";
 }
@@ -173,6 +189,30 @@ function selectFile(filePath) {
   loadEditorFile();
 }
 
+function generateDailyNotePath() {
+  if (!settings) return null;
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  
+  const fileName = settings.dailyFormat
+    .replace('YYYY', year)
+    .replace('MM', month)
+    .replace('DD', day);
+  
+  return `${settings.dailyFolder}/${fileName}.md`;
+}
+
+function openDailyNote() {
+  const dailyPath = generateDailyNotePath();
+  if (!dailyPath) return;
+  
+  saveCurrentFile(dailyPath);
+  loadEditorFile();
+}
+
 async function fetchFile(filePath) {
   if (!settings) throw new Error("Settings not configured");
 
@@ -188,6 +228,16 @@ async function fetchFile(filePath) {
   });
 
   if (!response.ok) {
+    // If file doesn't exist (404), return empty template for daily notes
+    if (response.status === 404 && filePath.startsWith(settings.dailyFolder)) {
+      const today = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      return `# Daily Note - ${today}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n`;
+    }
     throw new Error(`Failed to load file: ${response.status} ${response.statusText}`);
   }
 
@@ -236,50 +286,45 @@ async function saveFile() {
     const html = editor.getHTML();
     const content = turndownService.turndown(html);
 
-    // First, get current file SHA
+    // Check if file exists to get SHA
     const getResponse = await fetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github+json",  // Changed from v3+json
+        Accept: "application/vnd.github+json",
         "User-Agent": "github-editor",
       },
     });
 
-    if (!getResponse.ok) {
-      throw new Error(`Failed to get file SHA: ${getResponse.status}`);
+    let sha = null;
+    if (getResponse.ok) {
+      const fileData = await getResponse.json();
+      sha = fileData.sha;
     }
+    // If 404, it's a new file, sha can be null
 
-    const responseText = await getResponse.text();
-    console.log("Response:", responseText); // Debug log
-    
-    let fileData;
-    try {
-      fileData = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error(`Received non-JSON response: ${responseText.substring(0, 100)}`);
-    }
-    
-    const sha = fileData.sha;
-
-    // Now update the file
     // Encode content to base64 (handling UTF-8 properly)
     const base64Content = btoa(
       Array.from(new TextEncoder().encode(content), byte => String.fromCharCode(byte)).join('')
     );
     
+    const updatePayload = {
+      message: `Update ${currentFile} from editor`,
+      content: base64Content,
+    };
+    
+    if (sha) {
+      updatePayload.sha = sha;
+    }
+    
     const updateResponse = await fetch(apiUrl, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github.v3+json",
+        Accept: "application/vnd.github+json",
         "User-Agent": "github-editor",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: `Update ${currentFile} from editor`,
-        content: base64Content,
-        sha,
-      }),
+      body: JSON.stringify(updatePayload),
     });
 
     if (!updateResponse.ok) {
@@ -313,6 +358,7 @@ async function loadEditorFile() {
     
     saveBtn.disabled = false;
     fileSelectorBtn.disabled = false;
+    dailyNoteBtn.disabled = false;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
@@ -360,18 +406,21 @@ function init() {
   fileCancelBtn.addEventListener("click", hideFilePickerModal);
   fileSearchInput.addEventListener("input", (e) => filterFiles(e.target.value));
   saveBtn.addEventListener("click", saveFile);
+  dailyNoteBtn.addEventListener("click", openDailyNote);
 
   settingsForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const repo = repoInput.value.trim();
     const token = tokenInput.value.trim();
+    const dailyFolder = dailyFolderInput.value.trim() || "Daily Notes";
+    const dailyFormat = dailyFormatInput.value.trim() || "YYYY-MM-DD";
 
     if (!repo || !token) {
-      alert("Both fields are required");
+      alert("Repository and token are required");
       return;
     }
 
-    saveSettings(repo, token);
+    saveSettings(repo, token, dailyFolder, dailyFormat);
     hideSettingsModal();
     
     // Reload editor if it was already loaded
