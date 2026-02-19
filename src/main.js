@@ -393,7 +393,8 @@ async function saveFile(options = {}) {
     setStatus(options.isAuto ? "Auto-saving to GitHub..." : "Saving...");
 
     const [owner, repoName] = settings.repo.split("/");
-    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${currentFile}`;
+    const encodedPath = encodeURIComponent(currentFile).replace(/%2F/g, "/");
+    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${encodedPath}`;
     
     // Convert TipTap HTML back to markdown
     const content = getEditorMarkdown();
@@ -402,21 +403,21 @@ async function saveFile(options = {}) {
     const getResponse = await fetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${settings.token}`,
-        Accept: "application/json",
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "github-editor",
       },
+      cache: "no-store",
     });
 
     let sha = null;
     if (getResponse.ok) {
-      const responseText = await getResponse.text();
-      
-      try {
-        const fileData = JSON.parse(responseText);
-        sha = fileData.sha;
-      } catch (e) {
-        throw new Error("Got non-JSON response when fetching file metadata");
+      const contentType = getResponse.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Got non-JSON response when fetching file metadata: ${contentType || "unknown"}`);
       }
+      const fileData = await getResponse.json();
+      sha = fileData.sha;
     }
     // If 404, it's a new file, sha can be null
 
