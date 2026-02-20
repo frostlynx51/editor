@@ -1,5 +1,52 @@
 import { EditorView, basicSetup } from "codemirror";
+import { Decoration, ViewPlugin } from "@codemirror/view";
+import { RangeSetBuilder } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
+
+const tagDecoration = Decoration.mark({ class: "cm-tag" });
+const tagRegex = /(^|[^\w-])#([A-Za-z0-9_-]+)/g;
+
+const tagPlugin = ViewPlugin.fromClass(
+  class {
+    constructor(view) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view) {
+      const builder = new RangeSetBuilder();
+      const { doc } = view.state;
+
+      for (const { from, to } of view.visibleRanges) {
+        let pos = from;
+        while (pos <= to) {
+          const line = doc.lineAt(pos);
+          const text = line.text;
+          let match;
+          tagRegex.lastIndex = 0;
+
+          while ((match = tagRegex.exec(text))) {
+            const start = line.from + match.index + match[1].length;
+            const end = start + 1 + match[2].length;
+            builder.add(start, end, tagDecoration);
+          }
+
+          pos = line.to + 1;
+        }
+      }
+
+      return builder.finish();
+    }
+  },
+  {
+    decorations: (value) => value.decorations,
+  }
+);
 
 function getEventCoords(event) {
   if (event.touches && event.touches.length > 0) {
@@ -44,6 +91,7 @@ export function createMarkdownEditor({ parent, initialValue, onContentChange, sh
     extensions: [
       basicSetup,
       markdown(),
+      tagPlugin,
       EditorView.lineWrapping,
       EditorView.domEventHandlers({
         mousedown: (event, view) => handleCheckboxToggle(event, view, shouldIgnoreChange),

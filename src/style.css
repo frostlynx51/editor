@@ -221,6 +221,20 @@ body {
   font-family: "Source Sans 3", "Work Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
+.cm-tag {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #e1f5ff;
+  border: 1px solid #b3dff4;
+  color: #0b4f6c;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .cm-gutters {
   display: none;
 }
