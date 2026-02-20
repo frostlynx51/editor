@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&display=swap");
+
 :root {
   color-scheme: light;
   font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
@@ -200,17 +202,23 @@ body {
   height: 100%;
   background: #fdf6e3;
   color: #586e75;
+  font-family: "Source Sans 3", "Work Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .cm-scroller {
   padding: 2rem 3rem;
-  font-family: "Consolas", "Monaco", monospace;
+  font-family: "Source Sans 3", "Work Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   font-size: 1rem;
   line-height: 1.7;
 }
 
 .cm-content {
   caret-color: #268bd2;
+  font-family: "Source Sans 3", "Work Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.cm-line {
+  font-family: "Source Sans 3", "Work Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .cm-gutters {
