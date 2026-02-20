@@ -196,110 +196,33 @@ body {
   overflow: hidden;
 }
 
-.tiptap-editor {
+.cm-editor {
   height: 100%;
-  overflow-y: auto;
+  background: #fdf6e3;
+  color: #586e75;
+}
+
+.cm-scroller {
   padding: 2rem 3rem;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Consolas", "Monaco", monospace;
   font-size: 1rem;
   line-height: 1.7;
-  color: #586e75;
-  background: #fdf6e3;
-  outline: none;
 }
 
-.tiptap-editor h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 1.5rem 0 1rem 0;
-  padding-bottom: 0.3rem;
-  border-bottom: 2px solid #d3cbb7;
-  color: #073642;
+.cm-content {
+  caret-color: #268bd2;
 }
 
-.tiptap-editor h2 {
-  font-size: 1.6rem;
-  font-weight: 600;
-  margin: 1.3rem 0 0.8rem 0;
-  color: #073642;
+.cm-gutters {
+  display: none;
 }
 
-.tiptap-editor h3 {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin: 1.2rem 0 0.7rem 0;
-  color: #073642;
+.cm-activeLine {
+  background: rgba(38, 139, 210, 0.08);
 }
 
-.tiptap-editor p {
-  margin: 0.8rem 0;
-}
-
-.tiptap-editor ul,
-.tiptap-editor ol {
-  margin: 0.8rem 0;
-  padding-left: 2rem;
-}
-
-.tiptap-editor li {
-  margin: 0.3rem 0;
-}
-
-.tiptap-editor blockquote {
-  border-left: 4px solid #268bd2;
-  padding-left: 1rem;
-  margin: 1rem 0;
-  color: #657b83;
-  font-style: italic;
-}
-
-.tiptap-editor code {
-  background: #eee8d5;
-  padding: 0.2rem 0.4rem;
-  border-radius: 3px;
-  font-family: "Consolas", "Monaco", monospace;
-  font-size: 0.9rem;
-  color: #dc322f;
-}
-
-.tiptap-editor pre {
-  background: #eee8d5;
-  border: 1px solid #d3cbb7;
-  border-radius: 6px;
-  padding: 1rem;
-  margin: 1rem 0;
-  overflow-x: auto;
-}
-
-.tiptap-editor pre code {
-  background: transparent;
-  padding: 0;
-  color: #586e75;
-  font-size: 0.9rem;
-}
-
-.tiptap-editor a {
-  color: #268bd2;
-  text-decoration: none;
-}
-
-.tiptap-editor a:hover {
-  text-decoration: underline;
-}
-
-.tiptap-editor strong {
-  font-weight: 600;
-  color: #073642;
-}
-
-.tiptap-editor em {
-  font-style: italic;
-}
-
-.tiptap-editor hr {
-  border: none;
-  border-top: 2px solid #d3cbb7;
-  margin: 2rem 0;
+.cm-activeLineGutter {
+  background: #e3ddc3;
 }
 
 .modal {

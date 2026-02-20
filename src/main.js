@@ -1,22 +1,6 @@
-import { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { common, createLowlight } from 'lowlight';
-import { marked } from 'marked';
-import TurndownService from 'turndown';
+import { EditorView, basicSetup } from "codemirror";
+import { markdown } from "@codemirror/lang-markdown";
 import "./style.css";
-
-const lowlight = createLowlight(common);
-const turndownService = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-});
-
-// Configure marked for GitHub-flavored markdown
-marked.setOptions({
-  gfm: true,
-  breaks: true,
-});
 
 const statusEl = document.getElementById("status");
 const githubSavedEl = document.getElementById("github-saved-indicator");
@@ -119,9 +103,8 @@ function startGithubStatusTimer() {
   githubStatusTimer = setInterval(updateGithubSavedIndicator, GITHUB_STATUS_REFRESH_MS);
 }
 
-function getEditorMarkdown() {
-  const html = editor.getHTML();
-  return turndownService.turndown(html);
+function getEditorContent() {
+  return editor.state.doc.toString();
 }
 
 function updateDirtyState(currentContent) {
@@ -137,7 +120,7 @@ function scheduleLocalAutosave() {
   }
   autosaveTimer = setTimeout(() => {
     if (!editor || !settings || !currentFile) return;
-    const content = getEditorMarkdown();
+    const content = getEditorContent();
     saveDraft(currentFile, content);
   }, AUTOSAVE_DEBOUNCE_MS);
 }
@@ -350,37 +333,69 @@ async function fetchFile(filePath) {
 }
 
 function createEditor(value) {
-  // Parse markdown to HTML
-  const htmlContent = marked.parse(value);
-  
-  editor = new Editor({
-    element: editorEl,
+  editor = new EditorView({
+    doc: value,
     extensions: [
-      StarterKit,
-      CodeBlockLowlight.configure({
-        lowlight,
+      basicSetup,
+      markdown(),
+      EditorView.lineWrapping,
+      EditorView.domEventHandlers({
+        mousedown: handleCheckboxToggle,
+        touchstart: handleCheckboxToggle,
+      }),
+      EditorView.updateListener.of((update) => {
+        if (!update.docChanged || isLoadingContent) return;
+        const content = getEditorContent();
+        updateDirtyState(content);
+        scheduleLocalAutosave();
       }),
     ],
-    content: htmlContent,
-    editorProps: {
-      attributes: {
-        class: 'tiptap-editor',
-      },
-    },
-    onUpdate: () => {
-      if (isLoadingContent) return;
-      const content = getEditorMarkdown();
-      updateDirtyState(content);
-      scheduleLocalAutosave();
-    },
+    parent: editorEl,
   });
   return editor;
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+function getEventCoords(event) {
+  if (event.touches && event.touches.length > 0) {
+    const touch = event.touches[0];
+    return { x: touch.clientX, y: touch.clientY };
+  }
+  if (typeof event.clientX === "number" && typeof event.clientY === "number") {
+    return { x: event.clientX, y: event.clientY };
+  }
+  return null;
+}
+
+function handleCheckboxToggle(event, view) {
+  if (isLoadingContent) return false;
+  const coords = getEventCoords(event);
+  if (!coords) return false;
+
+  const pos = view.posAtCoords(coords);
+  if (pos == null) return false;
+
+  const line = view.state.doc.lineAt(pos);
+  const match = line.text.match(/^(\s*[-*]\s+)\[([ xX])\]/);
+  if (!match) return false;
+
+  const checkboxStart = line.from + match[1].length;
+  const checkboxEnd = checkboxStart + 2;
+  if (pos < checkboxStart || pos > checkboxEnd) return false;
+
+  const nextValue = match[2].toLowerCase() === "x" ? " " : "x";
+  view.dispatch({
+    changes: { from: checkboxStart + 1, to: checkboxStart + 2, insert: nextValue },
+  });
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}
+
+function setEditorContent(content) {
+  if (!editor) return;
+  editor.dispatch({
+    changes: { from: 0, to: editor.state.doc.length, insert: content },
+  });
 }
 
 async function saveFile(options = {}) {
@@ -396,8 +411,7 @@ async function saveFile(options = {}) {
     const encodedPath = encodeURIComponent(currentFile).replace(/%2F/g, "/");
     const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${encodedPath}`;
     
-    // Convert TipTap HTML back to markdown
-    const content = getEditorMarkdown();
+    const content = getEditorContent();
 
     // Check if file exists to get SHA
     const getResponse = await fetch(apiUrl, {
@@ -482,16 +496,14 @@ async function loadEditorFile() {
     updateGithubSavedIndicator();
     
     if (editor) {
-      const htmlContent = marked.parse(content);
-      editor.commands.setContent(htmlContent);
+      setEditorContent(content);
     } else {
       createEditor(content);
     }
 
     const draft = loadDraft(currentFile);
     if (draft && draft.content && draft.content !== content) {
-      const draftHtml = marked.parse(draft.content);
-      editor.commands.setContent(draftHtml);
+      setEditorContent(draft.content);
       lastSavedContent = content;
       hasUnsavedChanges = true;
       setStatus(`Restored local autosave for ${currentFile}`);
@@ -507,35 +519,6 @@ async function loadEditorFile() {
     setStatus(message, true);
     isLoadingContent = false;
   }
-}
-
-function detectLanguage(filePath) {
-  const ext = filePath.split(".").pop().toLowerCase();
-  const languageMap = {
-    js: "javascript",
-    ts: "typescript",
-    py: "python",
-    rb: "ruby",
-    java: "java",
-    cpp: "cpp",
-    c: "c",
-    cs: "csharp",
-    go: "go",
-    rs: "rust",
-    php: "php",
-    html: "html",
-    css: "css",
-    scss: "scss",
-    json: "json",
-    xml: "xml",
-    yaml: "yaml",
-    yml: "yaml",
-    md: "markdown",
-    sh: "shell",
-    bash: "shell",
-    sql: "sql",
-  };
-  return languageMap[ext] || "plaintext";
 }
 
 function init() {
