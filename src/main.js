@@ -1,5 +1,17 @@
-import { EditorView, basicSetup } from "codemirror";
-import { markdown } from "@codemirror/lang-markdown";
+import { createMarkdownEditor, getEditorContent, setEditorContent } from "./editor";
+import { createDailyNoteTemplate, generateDailyNotePath } from "./dailyNotes";
+import { fetchFileFromGithub, loadRepoMarkdownFiles, saveFileToGithub } from "./github";
+import {
+  clearDraft,
+  loadCurrentFile,
+  loadDraft,
+  loadLastGithubSavedAt,
+  loadSettings,
+  saveCurrentFile,
+  saveDraft,
+  saveLastGithubSavedAt,
+  saveSettings,
+} from "./storage";
 import "./style.css";
 
 const statusEl = document.getElementById("status");
@@ -44,37 +56,6 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle("error", isError);
 }
 
-function getDraftKey(filePath) {
-  const repoKey = settings?.repo || "unknown";
-  return `github-draft:${repoKey}:${filePath}`;
-}
-
-function getLastSavedKey(filePath) {
-  const repoKey = settings?.repo || "unknown";
-  return `github-last-saved:${repoKey}:${filePath}`;
-}
-
-function loadDraft(filePath) {
-  const stored = localStorage.getItem(getDraftKey(filePath));
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
-}
-
-function saveDraft(filePath, content) {
-  const payload = {
-    content,
-    updatedAt: Date.now(),
-  };
-  localStorage.setItem(getDraftKey(filePath), JSON.stringify(payload));
-}
-
-function clearDraft(filePath) {
-  localStorage.removeItem(getDraftKey(filePath));
-}
 
 function formatTimeAgo(ms) {
   if (ms < 60 * 1000) return "just now";
@@ -103,14 +84,10 @@ function startGithubStatusTimer() {
   githubStatusTimer = setInterval(updateGithubSavedIndicator, GITHUB_STATUS_REFRESH_MS);
 }
 
-function getEditorContent() {
-  return editor.state.doc.toString();
-}
-
 function updateDirtyState(currentContent) {
   hasUnsavedChanges = currentContent !== lastSavedContent;
   if (!hasUnsavedChanges) {
-    clearDraft(currentFile);
+    clearDraft(settings, currentFile);
   }
 }
 
@@ -120,8 +97,8 @@ function scheduleLocalAutosave() {
   }
   autosaveTimer = setTimeout(() => {
     if (!editor || !settings || !currentFile) return;
-    const content = getEditorContent();
-    saveDraft(currentFile, content);
+    const content = getEditorContent(editor);
+    saveDraft(settings, currentFile, content);
   }, AUTOSAVE_DEBOUNCE_MS);
 }
 
@@ -135,42 +112,9 @@ function startGithubAutosaveTimer() {
   }, GITHUB_AUTOSAVE_INTERVAL_MS);
 }
 
-function loadSettings() {
-  const stored = localStorage.getItem("github-settings");
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      // Add defaults for backwards compatibility
-      return {
-        ...parsed,
-        dailyFolder: parsed.dailyFolder || "Daily Notes",
-        dailyFormat: parsed.dailyFormat || "YYYY-MM-DD"
-      };
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-function saveSettings(repo, token, dailyFolder, dailyFormat) {
-  settings = { 
-    repo, 
-    token, 
-    dailyFolder: dailyFolder || "Daily Notes",
-    dailyFormat: dailyFormat || "YYYY-MM-DD"
-  };
-  localStorage.setItem("github-settings", JSON.stringify(settings));
-}
-
-function loadCurrentFile() {
-  const stored = localStorage.getItem("github-current-file");
-  return stored || "README.md";
-}
-
-function saveCurrentFile(filePath) {
+function setCurrentFile(filePath) {
   currentFile = filePath;
-  localStorage.setItem("github-current-file", filePath);
+  saveCurrentFile(filePath);
   currentFileEl.textContent = filePath;
 }
 
@@ -209,27 +153,7 @@ async function loadRepositoryFiles() {
   try {
     fileListEl.innerHTML = '<div class="loading-files">Loading files...</div>';
 
-    const [owner, repoName] = settings.repo.split("/");
-    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/git/trees/HEAD?recursive=1`;
-
-    const response = await fetch(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "github-editor",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to load repository files");
-    }
-
-    const data = await response.json();
-    allFiles = data.tree
-      .filter(item => item.type === "blob" && item.path.toLowerCase().endsWith(".md"))
-      .map(item => item.path)
-      .sort();
-
+    allFiles = await loadRepoMarkdownFiles({ settings });
     renderFileList(allFiles);
   } catch (error) {
     fileListEl.innerHTML = `<div class="loading-files">Error: ${error.message}</div>`;
@@ -272,129 +196,32 @@ function filterFiles(query) {
 }
 
 function selectFile(filePath) {
-  saveCurrentFile(filePath);
+  setCurrentFile(filePath);
   hideFilePickerModal();
   loadEditorFile();
 }
 
-function generateDailyNotePath() {
-  if (!settings) return null;
-  
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  
-  const fileName = settings.dailyFormat
-    .replace('YYYY', year)
-    .replace('MM', month)
-    .replace('DD', day);
-  
-  return `${settings.dailyFolder}/${fileName}.md`;
-}
-
 function openDailyNote() {
-  const dailyPath = generateDailyNotePath();
+  const dailyPath = generateDailyNotePath(settings);
   if (!dailyPath) return;
   
-  saveCurrentFile(dailyPath);
+  setCurrentFile(dailyPath);
   loadEditorFile();
 }
-
-async function fetchFile(filePath) {
-  if (!settings) throw new Error("Settings not configured");
-
-  const [owner, repoName] = settings.repo.split("/");
-  const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${filePath}`;
-
-  const response = await fetch(apiUrl, {
-    headers: {
-      Authorization: `Bearer ${settings.token}`,
-      Accept: "application/vnd.github.raw",
-      "User-Agent": "github-editor",
-    },
-  });
-
-  if (!response.ok) {
-    // If file doesn't exist (404), return empty template for daily notes
-    if (response.status === 404 && filePath.startsWith(settings.dailyFolder)) {
-      const today = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-      return `# Daily Note - ${today}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n`;
-    }
-    throw new Error(`Failed to load file: ${response.status} ${response.statusText}`);
+function ensureEditor(content) {
+  if (editor) {
+    setEditorContent(editor, content);
+    return;
   }
 
-  return await response.text();
-}
-
-function createEditor(value) {
-  editor = new EditorView({
-    doc: value,
-    extensions: [
-      basicSetup,
-      markdown(),
-      EditorView.lineWrapping,
-      EditorView.domEventHandlers({
-        mousedown: handleCheckboxToggle,
-        touchstart: handleCheckboxToggle,
-      }),
-      EditorView.updateListener.of((update) => {
-        if (!update.docChanged || isLoadingContent) return;
-        const content = getEditorContent();
-        updateDirtyState(content);
-        scheduleLocalAutosave();
-      }),
-    ],
+  editor = createMarkdownEditor({
     parent: editorEl,
-  });
-  return editor;
-}
-
-function getEventCoords(event) {
-  if (event.touches && event.touches.length > 0) {
-    const touch = event.touches[0];
-    return { x: touch.clientX, y: touch.clientY };
-  }
-  if (typeof event.clientX === "number" && typeof event.clientY === "number") {
-    return { x: event.clientX, y: event.clientY };
-  }
-  return null;
-}
-
-function handleCheckboxToggle(event, view) {
-  if (isLoadingContent) return false;
-  const coords = getEventCoords(event);
-  if (!coords) return false;
-
-  const pos = view.posAtCoords(coords);
-  if (pos == null) return false;
-
-  const line = view.state.doc.lineAt(pos);
-  const match = line.text.match(/^(\s*[-*]\s+)\[([ xX])\]/);
-  if (!match) return false;
-
-  const checkboxStart = line.from + match[1].length;
-  const checkboxEnd = checkboxStart + 2;
-  if (pos < checkboxStart || pos > checkboxEnd) return false;
-
-  const nextValue = match[2].toLowerCase() === "x" ? " " : "x";
-  view.dispatch({
-    changes: { from: checkboxStart + 1, to: checkboxStart + 2, insert: nextValue },
-  });
-  event.preventDefault();
-  event.stopPropagation();
-  return true;
-}
-
-function setEditorContent(content) {
-  if (!editor) return;
-  editor.dispatch({
-    changes: { from: 0, to: editor.state.doc.length, insert: content },
+    initialValue: content,
+    shouldIgnoreChange: () => isLoadingContent,
+    onContentChange: (nextContent) => {
+      updateDirtyState(nextContent);
+      scheduleLocalAutosave();
+    },
   });
 }
 
@@ -407,69 +234,19 @@ async function saveFile(options = {}) {
     saveBtn.disabled = true;
     setStatus(options.isAuto ? "Auto-saving to GitHub..." : "Saving...");
 
-    const [owner, repoName] = settings.repo.split("/");
-    const encodedPath = encodeURIComponent(currentFile).replace(/%2F/g, "/");
-    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${encodedPath}`;
-    
-    const content = getEditorContent();
-
-    // Check if file exists to get SHA
-    const getResponse = await fetch(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "github-editor",
-      },
-      cache: "no-store",
+    const content = getEditorContent(editor);
+    await saveFileToGithub({
+      settings,
+      filePath: currentFile,
+      content,
+      commitMessage: `Update ${currentFile} from editor`,
     });
-
-    let sha = null;
-    if (getResponse.ok) {
-      const contentType = getResponse.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        throw new Error(`Got non-JSON response when fetching file metadata: ${contentType || "unknown"}`);
-      }
-      const fileData = await getResponse.json();
-      sha = fileData.sha;
-    }
-    // If 404, it's a new file, sha can be null
-
-    // Encode content to base64 (handling UTF-8 properly)
-    const base64Content = btoa(
-      Array.from(new TextEncoder().encode(content), byte => String.fromCharCode(byte)).join('')
-    );
-    
-    const updatePayload = {
-      message: `Update ${currentFile} from editor`,
-      content: base64Content,
-    };
-    
-    if (sha) {
-      updatePayload.sha = sha;
-    }
-    
-    const updateResponse = await fetch(apiUrl, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${settings.token}`,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "github-editor",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatePayload),
-    });
-
-    if (!updateResponse.ok) {
-      const errorBody = await updateResponse.text().catch(() => "");
-      throw new Error(`Failed to save: ${updateResponse.status} - ${errorBody}`);
-    }
 
     lastSavedContent = content;
     hasUnsavedChanges = false;
     lastGithubSavedAt = Date.now();
-    localStorage.setItem(getLastSavedKey(currentFile), String(lastGithubSavedAt));
-    clearDraft(currentFile);
+    saveLastGithubSavedAt(settings, currentFile, lastGithubSavedAt);
+    clearDraft(settings, currentFile);
     updateGithubSavedIndicator();
     setStatus("Saved to GitHub");
     setTimeout(() => setStatus(`Loaded ${currentFile}`), 2000);
@@ -485,38 +262,36 @@ async function saveFile(options = {}) {
 async function loadEditorFile() {
   try {
     setStatus(`Fetching ${currentFile}...`);
-    const content = await fetchFile(currentFile);
+    const content = await fetchFileFromGithub({
+      settings,
+      filePath: currentFile,
+      dailyTemplate: createDailyNoteTemplate,
+    });
 
     setStatus(`Loaded ${currentFile}`);
     isLoadingContent = true;
     lastSavedContent = content;
     hasUnsavedChanges = false;
-    const storedTimestamp = localStorage.getItem(getLastSavedKey(currentFile));
-    lastGithubSavedAt = storedTimestamp ? Number(storedTimestamp) : null;
+    lastGithubSavedAt = loadLastGithubSavedAt(settings, currentFile);
     updateGithubSavedIndicator();
-    
-    if (editor) {
-      setEditorContent(content);
-    } else {
-      createEditor(content);
-    }
 
-    const draft = loadDraft(currentFile);
+    ensureEditor(content);
+
+    const draft = loadDraft(settings, currentFile);
     if (draft && draft.content && draft.content !== content) {
-      setEditorContent(draft.content);
+      setEditorContent(editor, draft.content);
       lastSavedContent = content;
       hasUnsavedChanges = true;
       setStatus(`Restored local autosave for ${currentFile}`);
     }
 
-    isLoadingContent = false;
-    
     saveBtn.disabled = false;
     fileSelectorBtn.disabled = false;
     dailyNoteBtn.disabled = false;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
+  } finally {
     isLoadingContent = false;
   }
 }
@@ -547,7 +322,7 @@ function init() {
       return;
     }
 
-    saveSettings(repo, token, dailyFolder, dailyFormat);
+    settings = saveSettings(repo, token, dailyFolder, dailyFormat);
     hideSettingsModal();
     
     // Reload editor if it was already loaded
@@ -557,7 +332,7 @@ function init() {
     }
     allFiles = []; // Reset file cache
     currentFile = "README.md"; // Reset to default
-    saveCurrentFile(currentFile);
+    setCurrentFile(currentFile);
     loadEditorFile();
   });
 
