@@ -25,6 +25,16 @@ A web-based markdown editor with GitHub integration, daily notes, and AI chat as
 - **Context-Aware** - Ask questions about your current note
 - **Gemini 2.5 Flash** - Fast AI responses powered by Google Gemini
 - **Side Panel** - Non-intrusive chat interface alongside your editor
+- **Uploaded File Context** - Use a bundle of all your notes as context for queries
+  - Create a `gemini_file_id.txt` file at the repository root with format:
+    ```
+    files/cjy1cigdm3xb
+    # URI: https://generativelanguage.googleapis.com/v1beta/files/cjy1cigdm3xb
+    # Uploaded: 2026-02-28 08:30:18
+    ```
+  - First line contains the file ID (e.g., `files/xyz123`)
+  - When present, Gemini uses this uploaded file instead of the current note
+  - Visual indicator shows which context mode is active for each response
 
 ## Setup
 
@@ -42,7 +52,7 @@ A web-based markdown editor with GitHub integration, daily notes, and AI chat as
 - **Settings**: Click ⚙️ to change repository, tokens, or daily notes config
 - **Switch Files**: Click the file selector to browse repository markdown files
 - **Daily Notes**: Click the calendar icon to create/open today's note
-- **AI Chat**: Click the chat icon to ask Gemini about your current note
+- **AI Chat**: Click the chat icon to ask Gemini about your current note (or all notes if `gemini_file_id.txt` exists)
 
 ## Security Notes
 
