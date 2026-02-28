@@ -325,6 +325,15 @@ body {
   font-size: 0.85rem;
 }
 
+.context-indicator {
+  align-self: center;
+  font-size: 0.75rem;
+  color: #93a1a1;
+  padding: 0.25rem 0.5rem;
+  margin: 0.25rem 0;
+  text-align: center;
+}
+
 .chat-form {
   display: flex;
   gap: 0.75rem;

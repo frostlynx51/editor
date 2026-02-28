@@ -185,17 +185,70 @@ function appendChatMessage(text, role = "bot") {
   return message;
 }
 
-function buildSystemPrompt() {
+function buildSystemPrompt(hasFileContext) {
+  // Don't include current file if using uploaded file context
+  if (hasFileContext) {
+    return "You are a helpful AI assistant. The user has provided a file containing their notes as reference material. Use this file to answer the user's questions accurately. Focus on answering the user's specific question, not on summarizing the file.";
+  }
+  
   const noteContent = editor ? getEditorContent(editor) : "";
   return `Current note: ${currentFile}\n\n${noteContent}`.trim();
+}
+
+async function fetchGeminiFileUri() {
+  if (!settings) return null;
+
+  try {
+    const content = await fetchFileFromGithub({
+      settings,
+      filePath: "gemini_file_id.txt",
+    });
+
+    // Parse first line to get the file ID
+    const lines = content.trim().split("\n");
+    if (lines.length === 0) return null;
+
+    const fileId = lines[0].trim();
+    if (!fileId) return null;
+
+    // Construct the full URI
+    return `https://generativelanguage.googleapis.com/v1beta/${fileId}`;
+  } catch (error) {
+    // File doesn't exist or error fetching - silently ignore
+    return null;
+  }
 }
 
 async function requestGemini(userText) {
   if (!settings?.geminiKey) {
     throw new Error("Missing Gemini API key. Add it in Settings.");
   }
+  
+  // Check for uploaded file context
+  const fileUri = await fetchGeminiFileUri();
+  const hasFileContext = !!fileUri;
+  
+  const systemPrompt = buildSystemPrompt(hasFileContext);
+  
+  const userParts = [];
+  
+  // Add file context if available with explicit instructions
+  if (fileUri) {
+    userParts.push({
+      fileData: {
+        fileUri: fileUri,
+        mimeType: "text/plain",
+      },
+    });
+    // Add explicit instruction about how to use the file
+    userParts.push({ 
+      text: "The above file contains my notes. Please use it as reference context to answer the following question:" 
+    });
+  }
+  
+  // Add user's text message
+  userParts.push({ text: userText });
 
-  const systemPrompt = buildSystemPrompt();
   const payload = {
     systemInstruction: {
       parts: [{ text: systemPrompt }],
@@ -203,7 +256,7 @@ async function requestGemini(userText) {
     contents: [
       {
         role: "user",
-        parts: [{ text: userText }],
+        parts: userParts,
       },
     ],
   };
@@ -233,7 +286,7 @@ async function requestGemini(userText) {
     throw new Error("Gemini returned an empty response");
   }
 
-  return text;
+  return { text, hasFileContext };
 }
 
 async function handleChatSubmit(event) {
@@ -249,9 +302,18 @@ async function handleChatSubmit(event) {
   chatInput.disabled = true;
 
   try {
-    const reply = await requestGemini(userText);
-    pending.textContent = reply;
+    const result = await requestGemini(userText);
+    pending.textContent = result.text;
     pending.classList.remove("system");
+    
+    // Add context indicator
+    const indicator = document.createElement("div");
+    indicator.className = "context-indicator";
+    indicator.textContent = result.hasFileContext 
+      ? "📁 Using uploaded file context" 
+      : `📝 Using current note: ${currentFile}`;
+    chatMessages.appendChild(indicator);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Chat failed";
     pending.textContent = message;
