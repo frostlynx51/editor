@@ -21,6 +21,7 @@ export function loadSettings() {
     const parsed = JSON.parse(stored);
     return {
       ...parsed,
+      geminiKey: parsed.geminiKey || "",
       dailyFolder: parsed.dailyFolder || "Daily Notes",
       dailyFormat: parsed.dailyFormat || "YYYY-MM-DD",
     };
@@ -29,10 +30,11 @@ export function loadSettings() {
   }
 }
 
-export function saveSettings(repo, token, dailyFolder, dailyFormat) {
+export function saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey = "") {
   const settings = {
     repo,
     token,
+    geminiKey: geminiKey || "",
     dailyFolder: dailyFolder || "Daily Notes",
     dailyFormat: dailyFormat || "YYYY-MM-DD",
   };

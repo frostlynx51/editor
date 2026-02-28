@@ -33,6 +33,14 @@ const filePickerModal = document.getElementById("file-picker-modal");
 const fileCancelBtn = document.getElementById("file-cancel-btn");
 const fileSearchInput = document.getElementById("file-search");
 const fileListEl = document.getElementById("file-list");
+const geminiKeyInput = document.getElementById("gemini-key-input");
+const chatToggleBtn = document.getElementById("chat-toggle-btn");
+const chatPanel = document.getElementById("chat-panel");
+const chatCloseBtn = document.getElementById("chat-close-btn");
+const chatMessages = document.getElementById("chat-messages");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+const chatSendBtn = document.getElementById("chat-send-btn");
 
 let editor = null;
 let settings = null;
@@ -50,6 +58,7 @@ let isLoadingContent = false;
 const AUTOSAVE_DEBOUNCE_MS = 1000;
 const GITHUB_AUTOSAVE_INTERVAL_MS = 15 * 60 * 1000;
 const GITHUB_STATUS_REFRESH_MS = 60 * 1000;
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -124,6 +133,7 @@ function showSettingsModal() {
     tokenInput.value = settings.token;
     dailyFolderInput.value = settings.dailyFolder || "Daily Notes";
     dailyFormatInput.value = settings.dailyFormat || "YYYY-MM-DD";
+    geminiKeyInput.value = settings.geminiKey || "";
   }
   settingsModal.style.display = "flex";
 }
@@ -145,6 +155,113 @@ function showFilePickerModal() {
 
 function hideFilePickerModal() {
   filePickerModal.style.display = "none";
+}
+
+function toggleChatPanel(forceOpen = null) {
+  const shouldOpen = forceOpen ?? chatPanel.classList.contains("collapsed");
+  chatPanel.classList.toggle("collapsed", !shouldOpen);
+  if (shouldOpen) {
+    chatInput.focus();
+  }
+}
+
+function updateChatToggleState() {
+  if (!chatToggleBtn) return;
+  chatToggleBtn.disabled = !settings;
+}
+
+function removeChatEmptyState() {
+  const empty = chatMessages.querySelector(".chat-empty");
+  if (empty) empty.remove();
+}
+
+function appendChatMessage(text, role = "bot") {
+  removeChatEmptyState();
+  const message = document.createElement("div");
+  message.className = `chat-message ${role}`.trim();
+  message.textContent = text;
+  chatMessages.appendChild(message);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return message;
+}
+
+function buildSystemPrompt() {
+  const noteContent = editor ? getEditorContent(editor) : "";
+  return `Current note: ${currentFile}\n\n${noteContent}`.trim();
+}
+
+async function requestGemini(userText) {
+  if (!settings?.geminiKey) {
+    throw new Error("Missing Gemini API key. Add it in Settings.");
+  }
+
+  const systemPrompt = buildSystemPrompt();
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: systemPrompt }],
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: userText }],
+      },
+    ],
+  };
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${settings.geminiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    const message = data?.error?.message || "Gemini request failed";
+    throw new Error(message);
+  }
+
+  if (data?.promptFeedback?.blockReason) {
+    throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}`);
+  }
+
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const text = parts.map((part) => part.text || "").join("").trim();
+  if (!text) {
+    throw new Error("Gemini returned an empty response");
+  }
+
+  return text;
+}
+
+async function handleChatSubmit(event) {
+  event.preventDefault();
+  const userText = chatInput.value.trim();
+  if (!userText) return;
+
+  appendChatMessage(userText, "user");
+  chatInput.value = "";
+
+  const pending = appendChatMessage("Thinking...", "system");
+  chatSendBtn.disabled = true;
+  chatInput.disabled = true;
+
+  try {
+    const reply = await requestGemini(userText);
+    pending.textContent = reply;
+    pending.classList.remove("system");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Chat failed";
+    pending.textContent = message;
+    pending.classList.remove("system");
+    pending.classList.add("error");
+  } finally {
+    chatSendBtn.disabled = false;
+    chatInput.disabled = false;
+    chatInput.focus();
+  }
 }
 
 async function loadRepositoryFiles() {
@@ -309,6 +426,9 @@ function init() {
   fileSearchInput.addEventListener("input", (e) => filterFiles(e.target.value));
   saveBtn.addEventListener("click", saveFile);
   dailyNoteBtn.addEventListener("click", openDailyNote);
+  chatToggleBtn.addEventListener("click", () => toggleChatPanel());
+  chatCloseBtn.addEventListener("click", () => toggleChatPanel(false));
+  chatForm.addEventListener("submit", handleChatSubmit);
 
   settingsForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -316,14 +436,16 @@ function init() {
     const token = tokenInput.value.trim();
     const dailyFolder = dailyFolderInput.value.trim() || "Daily Notes";
     const dailyFormat = dailyFormatInput.value.trim() || "YYYY-MM-DD";
+    const geminiKey = geminiKeyInput.value.trim();
 
     if (!repo || !token) {
       alert("Repository and token are required");
       return;
     }
 
-    settings = saveSettings(repo, token, dailyFolder, dailyFormat);
+    settings = saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey);
     hideSettingsModal();
+    updateChatToggleState();
     
     // Reload editor if it was already loaded
     if (editor) {
@@ -343,6 +465,8 @@ function init() {
   } else {
     loadEditorFile();
   }
+
+  updateChatToggleState();
 
   startGithubAutosaveTimer();
   startGithubStatusTimer();
