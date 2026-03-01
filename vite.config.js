@@ -1,6 +1,10 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Base path for GitHub Pages deployment
+  // Change 'editor' to match your repository name
+  base: '/editor/',
+  
   plugins: [
     {
       name: "github-api-proxy",
