@@ -2,6 +2,10 @@
 
 A web-based markdown editor with GitHub integration, daily notes, and AI chat assistance.
 
+## 🚀 Live Demo
+
+**[Try it now: https://frostlynx51.github.io/editor/](https://frostlynx51.github.io/editor/)**
+
 ## Features
 
 ### Core Editing
