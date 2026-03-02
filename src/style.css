@@ -824,3 +824,117 @@ body {
   background: #e3ddc3;
   border-color: #c9c0a7;
 }
+/* Help button styles */
+.help-btn {
+  padding: 0.5rem 0.75rem;
+  background: #eee8d5;
+  color: #586e75;
+  border: 1px solid #d3cbb7;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.help-btn:hover {
+  background: #e3ddc3;
+  transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
+/* Help modal styles */
+.modal-content.help-modal {
+  max-width: 700px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.help-content {
+  margin-bottom: 1rem;
+}
+
+.help-section {
+  margin-bottom: 2rem;
+}
+
+.help-section:last-child {
+  margin-bottom: 0;
+}
+
+.help-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: #268bd2;
+  border-bottom: 2px solid #d3cbb7;
+  padding-bottom: 0.5rem;
+}
+
+.help-section p {
+  margin: 0;
+  line-height: 1.6;
+  color: #657b83;
+}
+
+.help-section ul,
+.help-section ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+  color: #657b83;
+}
+
+.help-section li {
+  margin-bottom: 0.5rem;
+}
+
+.help-section strong {
+  color: #586e75;
+  font-weight: 600;
+}
+
+/* Keyboard shortcuts styles */
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #d3cbb7;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.shortcut-item:hover {
+  background: #eee8d5;
+  border-color: #268bd2;
+  transform: translateX(4px);
+}
+
+.shortcut-item kbd {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background: linear-gradient(180deg, #fdf6e3 0%, #eee8d5 100%);
+  border: 1px solid #d3cbb7;
+  border-radius: 4px;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.85rem;
+  color: #586e75;
+  font-weight: 600;
+  box-shadow: 0 2px 0 #d3cbb7, 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  min-width: 140px;
+  text-align: center;
+}
+
+.shortcut-item span {
+  flex: 1;
+  color: #657b83;
+  font-size: 0.95rem;
+}

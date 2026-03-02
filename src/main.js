@@ -154,6 +154,20 @@ function hideSettingsModal() {
   settingsModal.style.display = "none";
 }
 
+function showHelpModal() {
+  const helpModal = document.getElementById("help-modal");
+  if (helpModal) {
+    helpModal.style.display = "flex";
+  }
+}
+
+function hideHelpModal() {
+  const helpModal = document.getElementById("help-modal");
+  if (helpModal) {
+    helpModal.style.display = "none";
+  }
+}
+
 function toggleChatPanel(forceOpen = null) {
   const shouldOpen = forceOpen ?? chatPanel.classList.contains("collapsed");
   chatPanel.classList.toggle("collapsed", !shouldOpen);
@@ -540,6 +554,56 @@ function init() {
   chatCloseBtn.addEventListener("click", () => toggleChatPanel(false));
   chatForm.addEventListener("submit", handleChatSubmit);
   sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  
+  // Help button event listeners
+  const helpBtn = document.getElementById("help-btn");
+  const helpCancelBtn = document.getElementById("help-cancel-btn");
+  if (helpBtn) {
+    helpBtn.addEventListener("click", showHelpModal);
+  }
+  if (helpCancelBtn) {
+    helpCancelBtn.addEventListener("click", hideHelpModal);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    // Ctrl/Cmd + S: Save
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      if (!saveBtn.disabled) {
+        saveAllFiles({ isAuto: false });
+      }
+    }
+    // Ctrl/Cmd + D: Daily Note
+    else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+      e.preventDefault();
+      if (!dailyNoteBtn.disabled) {
+        openDailyNote();
+      }
+    }
+    // Ctrl/Cmd + ,: Settings
+    else if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+      e.preventDefault();
+      showSettingsModal();
+    }
+    // Ctrl/Cmd + B: Toggle Sidebar
+    else if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+      e.preventDefault();
+      toggleSidebar();
+    }
+    // Ctrl/Cmd + K: Toggle Chat
+    else if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      if (!chatToggleBtn.disabled) {
+        toggleChatPanel();
+      }
+    }
+    // Ctrl/Cmd + /: Show Help
+    else if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      e.preventDefault();
+      showHelpModal();
+    }
+  });
 
   settingsForm.addEventListener("submit", (e) => {
     e.preventDefault();
