@@ -60,8 +60,13 @@ export async function fetchFileFromGithub({ settings, filePath, dailyTemplate })
     // When requesting raw format, data is a string
     return data;
   } catch (error) {
-    if (error.status === 404 && filePath.startsWith(settings.dailyFolder)) {
-      return dailyTemplate ? dailyTemplate() : "";
+    if (error.status === 404) {
+      // File doesn't exist on GitHub yet
+      // For daily notes, use the template; for others, return empty string
+      if (filePath.startsWith(settings.dailyFolder) && dailyTemplate) {
+        return dailyTemplate();
+      }
+      return "";
     }
     throw new Error(`Failed to load file: ${error.message}`);
   }

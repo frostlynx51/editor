@@ -3,12 +3,12 @@
 ## 🔥 High Priority (Quick Wins)
 
 ### Usability Improvements
-- [ ] **Add keyboard shortcuts**
+- [x] **Add keyboard shortcuts**
   - `Ctrl/Cmd + S` to save
   - `Ctrl/Cmd + K` to search files
   - `Escape` to close modals
-- [ ] **Add loading spinner** - Show visual feedback during GitHub operations
-- [ ] **Add "New File" button** - Currently can only open existing files
+- [x] **Add loading spinner** - Show visual feedback during GitHub operations
+- [x] **Add "New File" button** - Currently can only open existing files
 - [ ] **Better error messages** - Make them specific (e.g., "Failed to save: File was modified by another commit")
 
 ### Core Features

@@ -10,6 +10,7 @@ export class FileTree {
     this.expandedDirs = new Set();
     this.allFiles = [];
     this.treeData = [];
+    this.selectedDirectory = null; // Track selected directory for new file creation
   }
 
   /**
@@ -109,10 +110,11 @@ export class FileTree {
     
     if (node.type === 'directory') {
       const isExpanded = this.expandedDirs.has(node.path);
+      const isSelected = this.selectedDirectory === node.path;
       const arrow = isExpanded ? '▼' : '▶';
       
       let html = `
-        <div class="tree-item tree-directory" 
+        <div class="tree-item tree-directory ${isSelected ? 'selected' : ''}" 
              data-path="${node.path}" 
              data-type="directory"
              style="padding-left: ${indent}px">
@@ -182,7 +184,10 @@ export class FileTree {
       </div>
       <div class="file-tree-header">
         <div class="file-tree-section-title">Files</div>
-        <button class="tree-collapse-all" title="Collapse All">⊟</button>
+        <div class="file-tree-actions">
+          <button class="tree-new-file-btn" title="New File">+</button>
+          <button class="tree-collapse-all" title="Collapse All">⊟</button>
+        </div>
       </div>
       <div class="file-tree-content">
         ${treeHtml}
@@ -208,9 +213,15 @@ export class FileTree {
     
     // Directory clicks
     this.container.querySelectorAll('.tree-directory').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
         const path = el.getAttribute('data-path');
         if (path) {
+          // Toggle selection on click
+          if (this.selectedDirectory === path) {
+            this.selectedDirectory = null;
+          } else {
+            this.selectedDirectory = path;
+          }
           this.toggleDirectory(path);
         }
       });
@@ -235,6 +246,15 @@ export class FileTree {
         this.render();
       });
     }
+    
+    // New file button
+    const newFileBtn = this.container.querySelector('.tree-new-file-btn');
+    if (newFileBtn) {
+      newFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.createNewFile();
+      });
+    }
   }
 
   /**
@@ -255,5 +275,58 @@ export class FileTree {
       this.expandedDirs.add(dirPath);
     }
     this.render();
+  }
+  
+  /**
+   * Create a new file in the selected directory or root
+   */
+  createNewFile() {
+    const fileName = prompt(
+      this.selectedDirectory 
+        ? `Create new file in "${this.selectedDirectory}":` 
+        : 'Create new file:',
+      'new-file.md'
+    );
+    
+    if (!fileName) return;
+    
+    // Sanitize filename
+    const sanitized = fileName.trim().replace(/^\/+/, '');
+    if (!sanitized) return;
+    
+    // Construct full path
+    let fullPath;
+    if (this.selectedDirectory) {
+      fullPath = `${this.selectedDirectory}/${sanitized}`;
+    } else {
+      fullPath = sanitized;
+    }
+    
+    // Check if file already exists
+    if (this.allFiles.includes(fullPath)) {
+      alert(`File "${fullPath}" already exists`);
+      return;
+    }
+    
+    // Initialize new file with empty content in FileManager
+    // This marks it as a new file that doesn't need to be fetched from GitHub
+    this.fileManager.setFileContent(fullPath, '', { autoSave: false, isClean: false });
+    
+    // Add to file list and trigger file select
+    this.allFiles.push(fullPath);
+    this.allFiles.sort();
+    
+    // Expand parent directory if needed
+    if (this.selectedDirectory) {
+      this.expandedDirs.add(this.selectedDirectory);
+    }
+    
+    // Re-render to show new file
+    this.render();
+    
+    // Select the new file
+    if (this.onFileSelect) {
+      this.onFileSelect(fullPath);
+    }
   }
 }

@@ -484,18 +484,31 @@ async function loadEditorFile() {
   if (!currentFile || !fileManager) return;
 
   try {
-    setStatus(`Fetching ${currentFile}...`);
+    // Check if file already exists in memory (e.g., newly created file)
+    const existingState = fileManager.getFileState(currentFile);
     
-    // Load from GitHub
-    const result = await fileManager.loadFromGithub(currentFile, async (path) => {
-      return await fetchFileFromGithub({
-        settings,
-        filePath: path,
-        dailyTemplate: createDailyNoteTemplate,
+    let result;
+    if (existingState && existingState.content !== undefined) {
+      // File exists in memory, use it (new files or cached files)
+      setStatus(`Loaded ${currentFile}`);
+      result = {
+        content: existingState.content,
+        hasLocalChanges: false,
+        localContent: null
+      };
+    } else {
+      // Load from GitHub
+      setStatus(`Fetching ${currentFile}...`);
+      result = await fileManager.loadFromGithub(currentFile, async (path) => {
+        return await fetchFileFromGithub({
+          settings,
+          filePath: path,
+          dailyTemplate: createDailyNoteTemplate,
+        });
       });
-    });
-
-    setStatus(`Loaded ${currentFile}`);
+      setStatus(`Loaded ${currentFile}`);
+    }
+    
     isLoadingContent = true;
     lastSavedContent = result.content;
     lastGithubSavedAt = loadLastGithubSavedAt(settings, currentFile);
