@@ -1,3 +1,5 @@
+import { CONFIG } from './config';
+
 /**
  * File tree component for rendering hierarchical file structure
  */
@@ -140,7 +142,7 @@ export class FileTree {
    * Render recent files section
    */
   renderRecentFiles() {
-    const recentFiles = this.fileManager.getRecentFiles().slice(0, 10);
+    const recentFiles = this.fileManager.getRecentFiles().slice(0, CONFIG.MAX_RECENT_FILES);
     
     if (recentFiles.length === 0) {
       return '<div class="recent-empty">No recent files</div>';

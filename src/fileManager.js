@@ -7,6 +7,7 @@ import {
   saveDirtyFiles,
   clearFileState
 } from './storage';
+import { CONFIG } from './config';
 
 /**
  * Manages multiple open files and their states
@@ -118,7 +119,7 @@ export class FileManager {
   /**
    * Schedule debounced save to localStorage
    */
-  scheduleSave(filePath, delayMs = 1000) {
+  scheduleSave(filePath, delayMs = CONFIG.AUTOSAVE_DEBOUNCE_MS) {
     // Clear existing timer
     if (this.saveTimers.has(filePath)) {
       clearTimeout(this.saveTimers.get(filePath));

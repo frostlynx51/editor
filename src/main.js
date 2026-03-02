@@ -9,6 +9,7 @@ import {
   saveLastGithubSavedAt,
   saveSettings,
 } from "./storage";
+import { CONFIG } from "./config";
 import "./style.css";
 
 const statusEl = document.getElementById("status");
@@ -55,11 +56,6 @@ let lastGithubSavedAt = null;
 let lastSavedContent = "";
 let isLoadingContent = false;
 
-const AUTOSAVE_DEBOUNCE_MS = 1000;
-const GITHUB_AUTOSAVE_INTERVAL_MS = 15 * 60 * 1000;
-const GITHUB_STATUS_REFRESH_MS = 60 * 1000;
-const GEMINI_MODEL = "gemini-2.5-flash";
-
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.classList.toggle("error", isError);
@@ -90,7 +86,7 @@ function startGithubStatusTimer() {
   if (githubStatusTimer) {
     clearInterval(githubStatusTimer);
   }
-  githubStatusTimer = setInterval(updateGithubSavedIndicator, GITHUB_STATUS_REFRESH_MS);
+  githubStatusTimer = setInterval(updateGithubSavedIndicator, CONFIG.GITHUB_STATUS_REFRESH_MS);
 }
 
 function onEditorContentChange(content) {
@@ -130,7 +126,7 @@ function startGithubAutosaveTimer() {
     if (dirtyFiles.length > 0) {
       saveAllFiles({ isAuto: true });
     }
-  }, GITHUB_AUTOSAVE_INTERVAL_MS);
+  }, CONFIG.GITHUB_AUTOSAVE_INTERVAL_MS);
 }
 
 function toggleSidebar() {
@@ -212,7 +208,7 @@ async function fetchGeminiFileUri() {
   try {
     const content = await fetchFileFromGithub({
       settings,
-      filePath: "gemini_file_id.txt",
+      filePath: CONFIG.GEMINI_FILE_ID_PATH,
     });
 
     // Parse first line to get the file ID
@@ -223,7 +219,7 @@ async function fetchGeminiFileUri() {
     if (!fileId) return null;
 
     // Construct the full URI
-    return `https://generativelanguage.googleapis.com/v1beta/${fileId}`;
+    return `${CONFIG.GEMINI_API_BASE}/${fileId}`;
   } catch (error) {
     // File doesn't exist or error fetching - silently ignore
     return null;
@@ -273,7 +269,7 @@ async function requestGemini(userText) {
   };
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${settings.geminiKey}`,
+    `${CONFIG.GEMINI_API_BASE}/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${settings.geminiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

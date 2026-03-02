@@ -1,32 +1,31 @@
-const SETTINGS_KEY = "github-settings";
-const CURRENT_FILE_KEY = "github-current-file";
+import { CONFIG } from "./config";
 
 function getRepoKey(settings) {
   return settings?.repo || "unknown";
 }
 
 function getDraftKey(settings, filePath) {
-  return `github-draft:${getRepoKey(settings)}:${filePath}`;
+  return `${CONFIG.STORAGE_KEYS.DRAFT_PREFIX}:${getRepoKey(settings)}:${filePath}`;
 }
 
 function getLastSavedKey(settings, filePath) {
-  return `github-last-saved:${getRepoKey(settings)}:${filePath}`;
+  return `${CONFIG.STORAGE_KEYS.LAST_SAVED_PREFIX}:${getRepoKey(settings)}:${filePath}`;
 }
 
 function getFileStateKey(settings, filePath) {
-  return `editor:${getRepoKey(settings)}:file:${filePath}`;
+  return `${CONFIG.STORAGE_KEYS.FILE_STATE_PREFIX}:${getRepoKey(settings)}:file:${filePath}`;
 }
 
 function getRecentFilesKey(settings) {
-  return `editor:${getRepoKey(settings)}:recent`;
+  return `${CONFIG.STORAGE_KEYS.FILE_STATE_PREFIX}:${getRepoKey(settings)}:${CONFIG.STORAGE_KEYS.RECENT_FILES_SUFFIX}`;
 }
 
 function getDirtyFilesKey(settings) {
-  return `editor:${getRepoKey(settings)}:dirty`;
+  return `${CONFIG.STORAGE_KEYS.FILE_STATE_PREFIX}:${getRepoKey(settings)}:${CONFIG.STORAGE_KEYS.DIRTY_FILES_SUFFIX}`;
 }
 
 export function loadSettings() {
-  const stored = localStorage.getItem(SETTINGS_KEY);
+  const stored = localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS);
   if (!stored) return null;
 
   try {
@@ -34,8 +33,8 @@ export function loadSettings() {
     return {
       ...parsed,
       geminiKey: parsed.geminiKey || "",
-      dailyFolder: parsed.dailyFolder || "Daily Notes",
-      dailyFormat: parsed.dailyFormat || "YYYY-MM-DD",
+      dailyFolder: parsed.dailyFolder || CONFIG.DEFAULT_DAILY_FOLDER,
+      dailyFormat: parsed.dailyFormat || CONFIG.DEFAULT_DAILY_FORMAT,
     };
   } catch {
     return null;
@@ -47,20 +46,20 @@ export function saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey = 
     repo,
     token,
     geminiKey: geminiKey || "",
-    dailyFolder: dailyFolder || "Daily Notes",
-    dailyFormat: dailyFormat || "YYYY-MM-DD",
+    dailyFolder: dailyFolder || CONFIG.DEFAULT_DAILY_FOLDER,
+    dailyFormat: dailyFormat || CONFIG.DEFAULT_DAILY_FORMAT,
   };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   return settings;
 }
 
 export function loadCurrentFile() {
-  const stored = localStorage.getItem(CURRENT_FILE_KEY);
+  const stored = localStorage.getItem(CONFIG.STORAGE_KEYS.CURRENT_FILE);
   return stored || "README.md";
 }
 
 export function saveCurrentFile(filePath) {
-  localStorage.setItem(CURRENT_FILE_KEY, filePath);
+  localStorage.setItem(CONFIG.STORAGE_KEYS.CURRENT_FILE, filePath);
 }
 
 export function loadDraft(settings, filePath) {
