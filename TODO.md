@@ -1,14 +1,34 @@
 # TODO: Improvement Roadmap
 
-## 🔥 High Priority (Quick Wins)
+## � Recent Updates (March 2, 2026)
+
+### Completed Since Last Review ✅
+- **Keyboard shortcuts** - Full set implemented (Save, Daily Note, Toggle Sidebar, Chat, Settings, Help)
+- **Directory tree view** - Hierarchical file tree with collapsible folders
+- **New file creation** - "+" button in file tree to create files in any directory
+- **GitHub API client** - Migrated to `@octokit/rest` for better API handling
+- **Multi-file editing** - FileManager handles multiple open files with per-file state
+- **Batch committing** - All dirty files saved in single commit to GitHub
+- **Recent files** - Quick access to recently opened files
+
+### In Progress / Partially Done ⚠️
+- **Loading feedback** - Text status exists but no visual spinner animation yet
+- **Error messages** - Basic error handling but could be more specific
+
+---
+
+## �🔥 High Priority (Quick Wins)
 
 ### Usability Improvements
-- [x] **Add keyboard shortcuts**
+- [x] **Add keyboard shortcuts** ✅ DONE
   - `Ctrl/Cmd + S` to save
-  - `Ctrl/Cmd + K` to search files
-  - `Escape` to close modals
-- [x] **Add loading spinner** - Show visual feedback during GitHub operations
-- [x] **Add "New File" button** - Currently can only open existing files
+  - `Ctrl/Cmd + D` for daily notes
+  - `Ctrl/Cmd + B` to toggle sidebar
+  - `Ctrl/Cmd + K` to toggle chat
+  - `Ctrl/Cmd + ,` for settings
+  - `Ctrl/Cmd + /` for help
+- [ ] **Add visual loading spinner** - Currently shows text feedback ("Saving...") but needs CSS spinner animation
+- [x] **Add "New File" button** ✅ DONE - "+" button in file tree
 - [ ] **Better error messages** - Make them specific (e.g., "Failed to save: File was modified by another commit")
 
 ### Core Features
@@ -61,9 +81,7 @@
 ## 📦 Library Replacements/Additions
 
 ### Replace Custom Implementations
-- [ ] **Base64 encoding** (`encodeUtf8ToBase64` in `src/github.js`)
-  - Consider `js-base64` library
-  - Or improve native `TextEncoder` + `btoa` implementation
+- [x] **Base64 encoding** ✅ DONE - Using native `Buffer.from().toString('base64')` via @octokit
 - [ ] **Date formatting** (`generateDailyNotePath` in `src/dailyNotes.js`)
   - Use `date-fns` (lightweight, tree-shakeable)
   - Or `Luxon` (more powerful)
@@ -72,11 +90,10 @@
 ### New Libraries to Add
 - [ ] **Debouncing** - Replace manual timer management
   - Use `lodash.debounce` (just the debounce function)
-  - Apply to `scheduleLocalAutosave` in `src/main.js`
-- [ ] **GitHub API Client** - Replace raw `fetch` calls
-  - Use `@octokit/rest` (official client)
-  - Handles rate limiting, retries, pagination automatically
-  - Better TypeScript support
+  - Apply to autosave in `FileManager`
+- [x] **GitHub API Client** ✅ DONE - Using `@octokit/rest`
+  - Handles authentication, API calls, and error handling
+  - Already in package.json and used throughout `src/github.js`
 - [ ] **Modal accessibility**
   - Use `focus-trap` for better keyboard navigation
   - Use `tabbable` to manage tab order in modals
@@ -97,10 +114,10 @@
   - Currently only searches filenames
   - Add full-text search across all notes
   - Consider client-side search index
-- [ ] **Folder/Directory Tree View**
-  - Currently shows flat list of files
-  - Add hierarchical tree view
-  - Collapsible folders
+- [x] **Folder/Directory Tree View** ✅ DONE
+  - Hierarchical tree view implemented in `src/fileTree.js`
+  - Collapsible folders working
+  - Shows recent files at the top
 - [ ] **Cross-Note Links**
   - Support `[[wiki-style]]` links
   - Auto-complete existing note names
@@ -199,38 +216,119 @@
 ## 🎯 Priority Order Recommendation
 
 1. **Week 1: Quick Wins**
-   - Keyboard shortcuts
-   - Loading spinner
-   - Better error messages
-   - New file button
+   - [x] ~~Keyboard shortcuts~~ ✅ DONE
+   - [x] ~~New file button~~ ✅ DONE
+   - [ ] Visual loading spinner (CSS animation)
+   - [ ] Escape to close modals
+   - [ ] Better error messages
 
 2. **Week 2: Core Features**
-   - Markdown preview
-   - Conflict detection
-   - Keyboard shortcuts implementation
+   - [ ] Markdown preview toggle
+   - [ ] Delete file functionality
+   - [ ] Rename file functionality
+   - [ ] Conflict detection
 
 3. **Week 3: Code Quality**
-   - Error handling improvements
-   - State management refactor
-   - Add basic tests
+   - [ ] Error handling improvements (retries, better messages)
+   - [ ] State management refactor
+   - [ ] Add basic tests
+   - [ ] Extract CSS into component files
 
 4. **Week 4: Library Integration**
-   - Add `@octokit/rest`
-   - Add `date-fns`
-   - Add `lodash.debounce`
+   - [x] ~~Add `@octokit/rest`~~ ✅ DONE
+   - [ ] Add `date-fns` for date formatting
+   - [ ] Add `lodash.debounce` or similar
+   - [ ] Consider focus-trap for modals
 
 5. **Month 2: Missing Features**
-   - Offline support
-   - File history
-   - Full-text search
-   - Tree view
+   - [ ] Offline support with service worker
+   - [ ] File history from GitHub commits
+   - [ ] Full-text search across files
+   - [ ] File upload & drag-drop support
 
 6. **Month 3: Architecture & Polish**
-   - Component extraction
-   - Event bus pattern
-   - Dark mode
-   - Performance optimization
+   - [ ] Component extraction (UI modules)
+   - [ ] Event bus pattern
+   - [ ] Dark mode
+   - [ ] Performance optimization for large repos
 
 ---
 
 **Note:** This is an ambitious list. Pick items based on your priorities and user feedback. The "Quick Wins" section provides maximum value with minimal effort.
+## 🆕 New Items Based on Current State
+
+### Quick Wins
+- [ ] **Add CSS spinner animation** - Text says "Saving..." but no visual spinner
+  - Add rotating icon/spinner next to status text
+  - Use CSS `@keyframes` animation
+- [ ] **Escape to close modals** - Currently have to click cancel button
+  - Add keydown listener for ESC key on all modals
+- [ ] **Improve new file UX**
+  - Pre-select directory by clicking folder first
+  - Better validation for file names
+  - Show toast/success message when file is created
+
+### Missing Core Features
+- [ ] **Delete File Functionality**
+  - Add delete button in file tree (on hover or context menu)
+  - Confirmation dialog before deleting
+  - Delete via GitHub API
+- [ ] **Rename File Functionality**
+  - Context menu or button to rename files
+  - Update references if using wiki-links in future
+- [ ] **Markdown Preview Toggle**
+  - Split pane or toggle view
+  - Live preview of rendered markdown
+  - Keep scroll position synced
+- [ ] **File Upload Support**
+  - Drag & drop files into editor
+  - Upload images and link them
+  - Create assets folder automatically
+
+### Code Organization
+- [ ] **Extract FileTree into separate CSS file**
+  - Currently all styles are in `src/style.css`
+  - Create `src/components/FileTree.css` or similar
+  - Better maintainability
+- [ ] **Create constants file**
+  - Extract GEMINI_MODEL, AUTOSAVE_DEBOUNCE_MS, etc.
+  - Centralize all magic numbers and strings
+- [ ] **Improve Gemini file context handling**
+  - Currently reads `gemini_file_id.txt` to get uploaded file context
+  - Add UI to show which context mode is active
+  - Allow uploading new file bundles from the UI
+  - Cache the file URI to avoid repeated fetches
+
+### Bug Fixes & Edge Cases
+- [ ] **Handle network failures gracefully**
+  - Currently errors just show in status bar
+  - Add retry mechanism for failed saves
+  - Show queue of pending changes when offline
+- [ ] **File tree doesn't update after batch save**
+  - Verify dirty indicators clear properly after save
+  - May need to fetch updated SHA from GitHub
+- [ ] **Validate repository exists before loading**
+  - Currently just fails when fetching files
+  - Add explicit repo existence check in settings
+- [ ] **Handle empty repositories**
+  - Show helpful message if repo has no markdown files
+  - Offer to create initial README.md
+- [ ] **Autosave interval edge cases**
+  - Pause autosave when user is actively typing
+  - Resume after idle period
+  - Visual indicator showing next autosave time
+
+### Performance & Scalability
+- [ ] **Large file handling**
+  - Test with files >10k lines
+  - Consider virtual scrolling or lazy loading
+  - Warning message for very large files
+- [ ] **Large repository handling**
+  - Currently loads entire tree recursively
+  - May timeout on repos with 1000+ files
+  - Add pagination or lazy loading for file list
+- [ ] **Optimize localStorage usage**
+  - Currently stores drafts for every file
+  - Clear old drafts after successful GitHub save
+  - Add storage quota monitoring
+  - Add explicit repo existence check in settings
