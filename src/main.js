@@ -1,14 +1,11 @@
 import { createMarkdownEditor, getEditorContent, setEditorContent } from "./editor";
 import { createDailyNoteTemplate, generateDailyNotePath } from "./dailyNotes";
-import { fetchFileFromGithub, loadRepoMarkdownFiles, saveFileToGithub } from "./github";
+import { fetchFileFromGithub, loadRepoMarkdownFiles, saveMultipleFilesToGithub } from "./github";
+import { FileManager } from "./fileManager";
+import { FileTree } from "./fileTree";
 import {
-  clearDraft,
-  loadCurrentFile,
-  loadDraft,
   loadLastGithubSavedAt,
   loadSettings,
-  saveCurrentFile,
-  saveDraft,
   saveLastGithubSavedAt,
   saveSettings,
 } from "./storage";
@@ -41,16 +38,19 @@ const chatMessages = document.getElementById("chat-messages");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
+const sidebarEl = document.getElementById("sidebar");
+const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+const fileTreeEl = document.getElementById("file-tree");
 
 let editor = null;
 let settings = null;
-let currentFile = "README.md";
+let fileManager = null;
+let fileTree = null;
+let currentFile = null;
 let allFiles = [];
-let autosaveTimer = null;
 let githubAutosaveTimer = null;
 let githubStatusTimer = null;
 let isSavingToGitHub = false;
-let hasUnsavedChanges = false;
 let lastGithubSavedAt = null;
 let lastSavedContent = "";
 let isLoadingContent = false;
@@ -93,22 +93,31 @@ function startGithubStatusTimer() {
   githubStatusTimer = setInterval(updateGithubSavedIndicator, GITHUB_STATUS_REFRESH_MS);
 }
 
-function updateDirtyState(currentContent) {
-  hasUnsavedChanges = currentContent !== lastSavedContent;
-  if (!hasUnsavedChanges) {
-    clearDraft(settings, currentFile);
+function onEditorContentChange(content) {
+  if (!currentFile || !fileManager) return;
+  
+  // Update file manager with new content (will auto-save with debounce)
+  fileManager.setFileContent(currentFile, content, { autoSave: true });
+  
+  // Update UI
+  updateDirtyState();
+  if (fileTree) {
+    fileTree.render();
   }
 }
 
-function scheduleLocalAutosave() {
-  if (autosaveTimer) {
-    clearTimeout(autosaveTimer);
+function updateDirtyState() {
+  if (!fileManager) return;
+  
+  const dirtyFiles = fileManager.getDirtyFiles();
+  const hasDirty = dirtyFiles.length > 0;
+  
+  // Update window title
+  if (hasDirty) {
+    document.title = `● GitHub Editor${currentFile ? ` - ${currentFile}` : ''}`;
+  } else {
+    document.title = `GitHub Editor${currentFile ? ` - ${currentFile}` : ''}`;
   }
-  autosaveTimer = setTimeout(() => {
-    if (!editor || !settings || !currentFile) return;
-    const content = getEditorContent(editor);
-    saveDraft(settings, currentFile, content);
-  }, AUTOSAVE_DEBOUNCE_MS);
 }
 
 function startGithubAutosaveTimer() {
@@ -116,15 +125,18 @@ function startGithubAutosaveTimer() {
     clearInterval(githubAutosaveTimer);
   }
   githubAutosaveTimer = setInterval(() => {
-    if (!hasUnsavedChanges || isSavingToGitHub) return;
-    saveFile({ isAuto: true });
+    if (!fileManager || isSavingToGitHub) return;
+    const dirtyFiles = fileManager.getDirtyFiles();
+    if (dirtyFiles.length > 0) {
+      saveAllFiles({ isAuto: true });
+    }
   }, GITHUB_AUTOSAVE_INTERVAL_MS);
 }
 
-function setCurrentFile(filePath) {
-  currentFile = filePath;
-  saveCurrentFile(filePath);
-  currentFileEl.textContent = filePath;
+function toggleSidebar() {
+  if (sidebarEl) {
+    sidebarEl.classList.toggle('collapsed');
+  }
 }
 
 function showSettingsModal() {
@@ -140,21 +152,6 @@ function showSettingsModal() {
 
 function hideSettingsModal() {
   settingsModal.style.display = "none";
-}
-
-function showFilePickerModal() {
-  filePickerModal.style.display = "flex";
-  fileSearchInput.value = "";
-  fileSearchInput.focus();
-  if (allFiles.length === 0) {
-    loadRepositoryFiles();
-  } else {
-    renderFileList(allFiles);
-  }
-}
-
-function hideFilePickerModal() {
-  filePickerModal.style.display = "none";
 }
 
 function toggleChatPanel(forceOpen = null) {
@@ -330,53 +327,41 @@ async function loadRepositoryFiles() {
   if (!settings) return;
 
   try {
-    fileListEl.innerHTML = '<div class="loading-files">Loading files...</div>';
-
-    allFiles = await loadRepoMarkdownFiles({ settings });
-    renderFileList(allFiles);
+    setStatus("Loading repository files...");
+    const files = await loadRepoMarkdownFiles({ settings });
+    allFiles = files.map(f => f.path);
+    
+    if (fileTree) {
+      fileTree.updateFiles(allFiles);
+    }
+    
+    setStatus("Repository files loaded");
   } catch (error) {
-    fileListEl.innerHTML = `<div class="loading-files">Error: ${error.message}</div>`;
+    const message = error instanceof Error ? error.message : "Failed to load files";
+    setStatus(message, true);
   }
-}
-
-function renderFileList(files) {
-  if (files.length === 0) {
-    fileListEl.innerHTML = '<div class="loading-files">No files found</div>';
-    return;
-  }
-
-  fileListEl.innerHTML = files
-    .map(file => {
-      const fileName = file.split("/").pop();
-      const isSelected = file === currentFile;
-      return `
-        <div class="file-item ${isSelected ? "selected" : ""}" data-path="${file}">
-          <div>${fileName}</div>
-          ${file.includes("/") ? `<div class="file-path">${file}</div>` : ""}
-        </div>
-      `;
-    })
-    .join("");
-
-  // Add click handlers
-  fileListEl.querySelectorAll(".file-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const path = item.getAttribute("data-path");
-      selectFile(path);
-    });
-  });
-}
-
-function filterFiles(query) {
-  const filtered = allFiles.filter(file =>
-    file.toLowerCase().includes(query.toLowerCase())
-  );
-  renderFileList(filtered);
 }
 
 function selectFile(filePath) {
-  setCurrentFile(filePath);
-  hideFilePickerModal();
+  if (!fileManager) return;
+  
+  // Save current file before switching
+  if (currentFile && editor) {
+    const content = getEditorContent(editor);
+    fileManager.setFileContent(currentFile, content, { autoSave: false });
+    fileManager.saveFileImmediate(currentFile);
+  }
+  
+  // Switch to new file
+  currentFile = filePath;
+  fileManager.switchFile(filePath);
+  
+  // Update UI
+  if (fileTree) {
+    fileTree.render();
+  }
+  
+  // Load file content
   loadEditorFile();
 }
 
@@ -384,12 +369,13 @@ function openDailyNote() {
   const dailyPath = generateDailyNotePath(settings);
   if (!dailyPath) return;
   
-  setCurrentFile(dailyPath);
-  loadEditorFile();
+  selectFile(dailyPath);
 }
 function ensureEditor(content) {
   if (editor) {
+    isLoadingContent = true;
     setEditorContent(editor, content);
+    isLoadingContent = false;
     return;
   }
 
@@ -397,38 +383,80 @@ function ensureEditor(content) {
     parent: editorEl,
     initialValue: content,
     shouldIgnoreChange: () => isLoadingContent,
-    onContentChange: (nextContent) => {
-      updateDirtyState(nextContent);
-      scheduleLocalAutosave();
-    },
+    onContentChange: onEditorContentChange,
   });
 }
 
-async function saveFile(options = {}) {
-  if (!editor || !settings || !currentFile) return;
+async function saveAllFiles(options = {}) {
+  if (!fileManager || !settings) return;
   if (isSavingToGitHub) return;
+
+  const dirtyFiles = fileManager.getDirtyFiles();
+  if (dirtyFiles.length === 0) {
+    setStatus("No changes to save");
+    return;
+  }
 
   try {
     isSavingToGitHub = true;
     saveBtn.disabled = true;
-    setStatus(options.isAuto ? "Auto-saving to GitHub..." : "Saving...");
+    
+    const fileCount = dirtyFiles.length;
+    setStatus(options.isAuto 
+      ? `Auto-saving ${fileCount} file${fileCount === 1 ? '' : 's'}...` 
+      : `Saving ${fileCount} file${fileCount === 1 ? '' : 's'}...`
+    );
 
-    const content = getEditorContent(editor);
-    await saveFileToGithub({
-      settings,
-      filePath: currentFile,
-      content,
-      commitMessage: `Update ${currentFile} from editor`,
+    // Prepare files for batch save
+    const filesToSave = dirtyFiles.map(path => {
+      const state = fileManager.getFileState(path);
+      return {
+        path,
+        content: state.content,
+        commitMessage: `Update ${path} from editor`
+      };
     });
 
-    lastSavedContent = content;
-    hasUnsavedChanges = false;
-    lastGithubSavedAt = Date.now();
-    saveLastGithubSavedAt(settings, currentFile, lastGithubSavedAt);
-    clearDraft(settings, currentFile);
-    updateGithubSavedIndicator();
-    setStatus("Saved to GitHub");
-    setTimeout(() => setStatus(`Loaded ${currentFile}`), 2000);
+    // Batch save to GitHub
+    const results = await saveMultipleFilesToGithub({
+      settings,
+      files: filesToSave,
+      onProgress: (current, total, path) => {
+        setStatus(`Saving ${current}/${total}: ${path}`);
+      }
+    });
+
+    // Update file states
+    results.succeeded.forEach(({ path, sha }) => {
+      fileManager.markFileClean(path, sha);
+    });
+
+    // Update last saved time for all succeeded files
+    if (results.succeeded.length > 0) {
+      lastGithubSavedAt = Date.now();
+      results.succeeded.forEach(({ path }) => {
+        saveLastGithubSavedAt(settings, path, lastGithubSavedAt);
+      });
+      updateGithubSavedIndicator();
+    }
+
+    // Update UI
+    updateDirtyState();
+    if (fileTree) {
+      fileTree.render();
+    }
+
+    // Show results
+    if (results.failed.length === 0) {
+      setStatus(`Saved ${results.succeeded.length} file${results.succeeded.length === 1 ? '' : 's'} to GitHub`);
+      setTimeout(() => {
+        if (currentFile) {
+          setStatus(`Loaded ${currentFile}`);
+        }
+      }, 2000);
+    } else {
+      setStatus(`Saved ${results.succeeded.length}, failed ${results.failed.length}`, true);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
@@ -439,34 +467,43 @@ async function saveFile(options = {}) {
 }
 
 async function loadEditorFile() {
+  if (!currentFile || !fileManager) return;
+
   try {
     setStatus(`Fetching ${currentFile}...`);
-    const content = await fetchFileFromGithub({
-      settings,
-      filePath: currentFile,
-      dailyTemplate: createDailyNoteTemplate,
+    
+    // Load from GitHub
+    const result = await fileManager.loadFromGithub(currentFile, async (path) => {
+      return await fetchFileFromGithub({
+        settings,
+        filePath: path,
+        dailyTemplate: createDailyNoteTemplate,
+      });
     });
 
     setStatus(`Loaded ${currentFile}`);
     isLoadingContent = true;
-    lastSavedContent = content;
-    hasUnsavedChanges = false;
+    lastSavedContent = result.content;
     lastGithubSavedAt = loadLastGithubSavedAt(settings, currentFile);
     updateGithubSavedIndicator();
 
-    ensureEditor(content);
+    // Create or update editor
+    ensureEditor(result.content);
 
-    const draft = loadDraft(settings, currentFile);
-    if (draft && draft.content && draft.content !== content) {
-      setEditorContent(editor, draft.content);
-      lastSavedContent = content;
-      hasUnsavedChanges = true;
-      setStatus(`Restored local autosave for ${currentFile}`);
+    // Check for local changes
+    if (result.hasLocalChanges) {
+      setEditorContent(editor, result.localContent);
+      setStatus(`Restored local changes for ${currentFile}`);
+      updateDirtyState();
     }
 
     saveBtn.disabled = false;
-    fileSelectorBtn.disabled = false;
     dailyNoteBtn.disabled = false;
+    
+    // Reveal file in tree
+    if (fileTree) {
+      fileTree.revealFile(currentFile);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
@@ -477,20 +514,32 @@ async function loadEditorFile() {
 
 function init() {
   settings = loadSettings();
-  currentFile = loadCurrentFile();
-  currentFileEl.textContent = currentFile;
+  
+  // Initialize file manager
+  if (settings) {
+    fileManager = new FileManager(settings);
+    
+    // Get most recent file or default to README.md
+    const recentFiles = fileManager.getRecentFiles();
+    currentFile = recentFiles[0] || "README.md";
+    
+    // Initialize file tree
+    fileTree = new FileTree({
+      container: fileTreeEl,
+      onFileSelect: selectFile,
+      fileManager: fileManager
+    });
+  }
 
   // Event listeners
   settingsBtn.addEventListener("click", showSettingsModal);
   cancelBtn.addEventListener("click", hideSettingsModal);
-  fileSelectorBtn.addEventListener("click", showFilePickerModal);
-  fileCancelBtn.addEventListener("click", hideFilePickerModal);
-  fileSearchInput.addEventListener("input", (e) => filterFiles(e.target.value));
-  saveBtn.addEventListener("click", saveFile);
+  saveBtn.addEventListener("click", () => saveAllFiles({ isAuto: false }));
   dailyNoteBtn.addEventListener("click", openDailyNote);
   chatToggleBtn.addEventListener("click", () => toggleChatPanel());
   chatCloseBtn.addEventListener("click", () => toggleChatPanel(false));
   chatForm.addEventListener("submit", handleChatSubmit);
+  sidebarToggleBtn.addEventListener("click", toggleSidebar);
 
   settingsForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -509,14 +558,30 @@ function init() {
     hideSettingsModal();
     updateChatToggleState();
     
-    // Reload editor if it was already loaded
+    // Reinitialize for new repo
     if (editor) {
       editor.destroy();
       editor = null;
     }
-    allFiles = []; // Reset file cache
-    currentFile = "README.md"; // Reset to default
-    setCurrentFile(currentFile);
+    
+    // Clear old state
+    if (fileManager) {
+      fileManager.clearAll();
+    }
+    
+    // Reinitialize
+    fileManager = new FileManager(settings);
+    fileTree = new FileTree({
+      container: fileTreeEl,
+      onFileSelect: selectFile,
+      fileManager: fileManager
+    });
+    
+    allFiles = [];
+    currentFile = "README.md";
+    fileManager.switchFile(currentFile);
+    
+    loadRepositoryFiles();
     loadEditorFile();
   });
 
@@ -525,11 +590,11 @@ function init() {
     setStatus("Configure settings to start");
     showSettingsModal();
   } else {
+    loadRepositoryFiles();
     loadEditorFile();
   }
 
   updateChatToggleState();
-
   startGithubAutosaveTimer();
   startGithubStatusTimer();
 }

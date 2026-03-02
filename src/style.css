@@ -39,6 +39,24 @@ body {
   gap: 1.5rem;
 }
 
+.sidebar-toggle-btn {
+  padding: 0.5rem 0.75rem;
+  background: #eee8d5;
+  color: #586e75;
+  border: 1px solid #d3cbb7;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sidebar-toggle-btn:hover {
+  background: #e3ddc3;
+  transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.25rem;
@@ -193,6 +211,32 @@ body {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
 }
 
+.main-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 280px;
+  background: #eee8d5;
+  border-right: 2px solid #d3cbb7;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed {
+  margin-left: -280px;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .editor {
   flex: 1;
   overflow: hidden;
@@ -222,6 +266,175 @@ body {
 .chat-toggle-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* File Tree Styles */
+
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.file-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #e3ddc3;
+  border-bottom: 1px solid #d3cbb7;
+}
+
+.file-tree-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #586e75;
+  font-weight: 600;
+}
+
+.tree-collapse-all {
+  background: transparent;
+  border: 1px solid #d3cbb7;
+  color: #586e75;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.15s ease;
+}
+
+.tree-collapse-all:hover {
+  background: #fdf6e3;
+}
+
+.recent-files {
+  border-bottom: 2px solid #d3cbb7;
+}
+
+.recent-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #93a1a1;
+  font-size: 0.85rem;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #e3ddc3;
+  transition: background 0.15s ease;
+}
+
+.recent-item:hover {
+  background: #e3ddc3;
+}
+
+.recent-item.active {
+  background: #268bd2;
+  color: #fdf6e3;
+}
+
+.recent-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.recent-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.recent-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-path {
+  font-size: 0.7rem;
+  color: #93a1a1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "Consolas", "Monaco", monospace;
+}
+
+.recent-item.active .recent-path {
+  color: rgba(253, 246, 227, 0.8);
+}
+
+.dirty-indicator {
+  color: #dc322f;
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.recent-item.active .dirty-indicator {
+  color: #fdf6e3;
+}
+
+.file-tree-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.tree-item:hover {
+  background: #e3ddc3;
+}
+
+.tree-file.active {
+  background: #268bd2;
+  color: #fdf6e3;
+}
+
+.tree-arrow {
+  font-size: 0.7rem;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  color: #93a1a1;
+}
+
+.tree-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.tree-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.tree-directory .tree-label {
+  font-weight: 600;
+}
+
+.tree-file .dirty-indicator {
+  margin-left: auto;
 }
 
 .chat-panel {

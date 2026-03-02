@@ -12,6 +12,7 @@
     "@codemirror/lang-markdown": "^6.2.5",
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.28.4",
+    "@octokit/rest": "^21.0.0",
     "codemirror": "^6.0.1"
   },
   "devDependencies": {

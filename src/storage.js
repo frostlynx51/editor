@@ -13,6 +13,18 @@ function getLastSavedKey(settings, filePath) {
   return `github-last-saved:${getRepoKey(settings)}:${filePath}`;
 }
 
+function getFileStateKey(settings, filePath) {
+  return `editor:${getRepoKey(settings)}:file:${filePath}`;
+}
+
+function getRecentFilesKey(settings) {
+  return `editor:${getRepoKey(settings)}:recent`;
+}
+
+function getDirtyFilesKey(settings) {
+  return `editor:${getRepoKey(settings)}:dirty`;
+}
+
 export function loadSettings() {
   const stored = localStorage.getItem(SETTINGS_KEY);
   if (!stored) return null;
@@ -80,4 +92,69 @@ export function loadLastGithubSavedAt(settings, filePath) {
 
 export function saveLastGithubSavedAt(settings, filePath, timestamp) {
   localStorage.setItem(getLastSavedKey(settings, filePath), String(timestamp));
+}
+
+// Multi-file state management
+
+export function loadFileState(settings, filePath) {
+  if (!settings) return null;
+  const key = getFileStateKey(settings, filePath);
+  const stored = localStorage.getItem(key);
+  if (!stored) return null;
+  
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+export function saveFileState(settings, filePath, state) {
+  if (!settings) return;
+  const key = getFileStateKey(settings, filePath);
+  localStorage.setItem(key, JSON.stringify(state));
+}
+
+export function clearFileState(settings, filePath) {
+  if (!settings) return;
+  const key = getFileStateKey(settings, filePath);
+  localStorage.removeItem(key);
+}
+
+export function loadRecentFiles(settings) {
+  if (!settings) return [];
+  const key = getRecentFilesKey(settings);
+  const stored = localStorage.getItem(key);
+  if (!stored) return [];
+  
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecentFiles(settings, files) {
+  if (!settings) return;
+  const key = getRecentFilesKey(settings);
+  localStorage.setItem(key, JSON.stringify(files));
+}
+
+export function loadDirtyFiles(settings) {
+  if (!settings) return [];
+  const key = getDirtyFilesKey(settings);
+  const stored = localStorage.getItem(key);
+  if (!stored) return [];
+  
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export function saveDirtyFiles(settings, files) {
+  if (!settings) return;
+  const key = getDirtyFilesKey(settings);
+  localStorage.setItem(key, JSON.stringify(files));
 }

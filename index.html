@@ -9,8 +9,9 @@
     <div id="app">
       <header class="app-header">
         <div class="header-left">
+          <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Toggle sidebar">☰</button>
           <h1>GitHub Editor</h1>
-          <button id="file-selector-btn" class="file-selector-btn" disabled>
+          <button id="file-selector-btn" class="file-selector-btn" disabled style="display: none;">
             <span id="current-file">No file selected</span>
             <span class="dropdown-arrow">▼</span>
           </button>
@@ -26,7 +27,14 @@
           <button id="save-btn" class="save-btn" disabled>Save</button>
         </div>
       </header>
-      <div id="editor" class="editor"></div>
+      <div class="main-container">
+        <aside id="sidebar" class="sidebar">
+          <div id="file-tree" class="file-tree"></div>
+        </aside>
+        <div class="editor-container">
+          <div id="editor" class="editor"></div>
+        </div>
+      </div>
       <section id="chat-panel" class="chat-panel collapsed" aria-label="Chat with Gemini">
         <div class="chat-header">
           <div class="chat-title">Chat with Gemini</div>

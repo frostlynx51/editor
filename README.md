@@ -11,14 +11,18 @@ A web-based markdown editor with GitHub integration, daily notes, and AI chat as
 ### Core Editing
 - **CodeMirror 6 Editor** - Modern markdown editor with syntax highlighting
 - **Hashtag Support** - Automatic highlighting of #tags throughout your notes
-- **Auto-save** - Local drafts saved automatically as you type
-- **Multi-file Support** - Browse and edit any markdown file in your repository
+- **File Tree Sidebar** - Browse repository structure with expandable directories
+- **Recent Files** - Quick access to recently opened files
+- **Multi-file Editing** - Work on multiple files simultaneously with automatic state management
+- **Auto-save** - Local drafts saved automatically as you type (1-second debounce)
+- **Batch Sync** - All modified files synced to GitHub together
 
 ### GitHub Integration
 - **Load & Save** - Connect to any GitHub repository (owner/repo format)
-- **Auto-sync** - Automatic GitHub saves every 15 minutes
-- **File Browser** - Search and switch between markdown files in your repo
+- **Auto-sync** - Automatic GitHub batch sync every 15 minutes for all modified files
+- **File Browser** - Navigate full repository structure with directory tree
 - **Personal Access Token** - Secure authentication with GitHub API
+- **Dirty File Tracking** - Visual indicators show which files have unsaved changes
 
 ### Daily Notes
 - **Quick Creation** - One-click daily note generation
@@ -52,11 +56,15 @@ A web-based markdown editor with GitHub integration, daily notes, and AI chat as
 
 ## Usage
 
-- **Edit Files**: Content is auto-saved locally; click Save for GitHub sync
+- **Edit Files**: Content is auto-saved locally; click Save to sync all changes to GitHub
 - **Settings**: Click ⚙️ to change repository, tokens, or daily notes config
-- **Switch Files**: Click the file selector to browse repository markdown files
+- **Switch Files**: Click any file in the sidebar file tree to open it
+- **Recent Files**: Access recently opened files from the top of the sidebar
+- **Toggle Sidebar**: Click ☰ to show/hide the file tree sidebar
+- **Expand Directories**: Click directory names to expand/collapse folders
 - **Daily Notes**: Click the calendar icon to create/open today's note
 - **AI Chat**: Click the chat icon to ask Gemini about your current note (or all notes if `gemini_file_id.txt` exists)
+- **Dirty Indicators**: Files with unsaved changes show a red dot (●) next to their name
 
 ## Security Notes
 
