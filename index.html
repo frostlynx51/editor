@@ -41,20 +41,42 @@
         <div class="editor-container">
           <div id="editor" class="editor"></div>
         </div>
+        <aside id="right-panel" class="right-panel collapsed" aria-label="Assistant and file details">
+          <div class="panel-tabs">
+            <button id="panel-chat-tab" class="panel-tab active" type="button">Chat</button>
+            <button id="panel-info-tab" class="panel-tab" type="button">Info</button>
+          </div>
+          <section id="chat-panel" class="panel-view chat-panel active" aria-label="Chat with Gemini">
+            <div class="chat-header">
+              <div class="chat-title">Chat with Gemini</div>
+              <button type="button" id="chat-close-btn" class="chat-close-btn">Hide</button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+              <div class="chat-empty">Ask about the current note to get started.</div>
+            </div>
+            <form id="chat-form" class="chat-form">
+              <input type="text" id="chat-input" placeholder="Ask about this note..." autocomplete="off" />
+              <button type="submit" id="chat-send-btn" class="chat-send-btn">Send</button>
+            </form>
+          </section>
+          <section id="info-panel" class="panel-view info-panel" aria-label="Current file info">
+            <h3>Workspace Context</h3>
+            <div class="info-row">
+              <span class="info-label">Current file</span>
+              <code id="info-current-file">-</code>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Dirty files</span>
+              <span id="info-dirty-files">0</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">GitHub save status</span>
+              <span id="info-last-saved">never</span>
+            </div>
+            <p class="info-tip">Tip: use <kbd>Ctrl/Cmd + K</kbd> to open chat quickly.</p>
+          </section>
+        </aside>
       </div>
-      <section id="chat-panel" class="chat-panel collapsed" aria-label="Chat with Gemini">
-        <div class="chat-header">
-          <div class="chat-title">Chat with Gemini</div>
-          <button type="button" id="chat-close-btn" class="chat-close-btn">Hide</button>
-        </div>
-        <div id="chat-messages" class="chat-messages">
-          <div class="chat-empty">Ask about the current note to get started.</div>
-        </div>
-        <form id="chat-form" class="chat-form">
-          <input type="text" id="chat-input" placeholder="Ask about this note..." autocomplete="off" />
-          <button type="submit" id="chat-send-btn" class="chat-send-btn">Send</button>
-        </form>
-      </section>
     </div>
 
     <div id="settings-modal" class="modal" style="display: none;">

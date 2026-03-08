@@ -41,6 +41,13 @@ const chatMessages = document.getElementById("chat-messages");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
+const rightPanel = document.getElementById("right-panel");
+const panelChatTab = document.getElementById("panel-chat-tab");
+const panelInfoTab = document.getElementById("panel-info-tab");
+const infoCurrentFileEl = document.getElementById("info-current-file");
+const infoDirtyFilesEl = document.getElementById("info-dirty-files");
+const infoLastSavedEl = document.getElementById("info-last-saved");
+const infoPanel = document.getElementById("info-panel");
 const sidebarEl = document.getElementById("sidebar");
 const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 const fileTreeEl = document.getElementById("file-tree");
@@ -78,12 +85,17 @@ function formatTimeAgo(ms) {
 
 function updateGithubSavedIndicator() {
   if (!githubSavedEl) return;
+  let indicatorText = "never";
   if (!lastGithubSavedAt) {
     githubSavedEl.textContent = "Last saved to GitHub: never";
-    return;
+  } else {
+    const elapsed = Date.now() - lastGithubSavedAt;
+    indicatorText = `${formatTimeAgo(elapsed)} ago`;
+    githubSavedEl.textContent = `Last saved to GitHub: ${indicatorText}`;
   }
-  const elapsed = Date.now() - lastGithubSavedAt;
-  githubSavedEl.textContent = `Last saved to GitHub: ${formatTimeAgo(elapsed)} ago`;
+  if (infoLastSavedEl) {
+    infoLastSavedEl.textContent = indicatorText;
+  }
 }
 
 function startGithubStatusTimer() {
@@ -118,6 +130,8 @@ function updateDirtyState() {
   } else {
     document.title = `GitHub Editor${currentFile ? ` - ${currentFile}` : ''}`;
   }
+
+  updateInfoPanel();
 }
 
 function startGithubAutosaveTimer() {
@@ -136,6 +150,26 @@ function startGithubAutosaveTimer() {
 function toggleSidebar() {
   if (sidebarEl) {
     sidebarEl.classList.toggle('collapsed');
+  }
+}
+
+function setActivePanelTab(tabName) {
+  if (!panelChatTab || !panelInfoTab || !chatPanel || !infoPanel) return;
+
+  const chatActive = tabName === "chat";
+  panelChatTab.classList.toggle("active", chatActive);
+  panelInfoTab.classList.toggle("active", !chatActive);
+  chatPanel.classList.toggle("active", chatActive);
+  infoPanel.classList.toggle("active", !chatActive);
+}
+
+function updateInfoPanel() {
+  if (infoCurrentFileEl) {
+    infoCurrentFileEl.textContent = currentFile || "-";
+  }
+  if (infoDirtyFilesEl) {
+    const dirtyCount = fileManager ? fileManager.getDirtyFiles().length : 0;
+    infoDirtyFilesEl.textContent = String(dirtyCount);
   }
 }
 
@@ -183,6 +217,9 @@ function showSettingsModal() {
     geminiKeyInput.value = settings.geminiKey || "";
   }
   settingsModal.style.display = "flex";
+  if (rightPanel) {
+    rightPanel.classList.add("collapsed");
+  }
   closeToolsMenu();
 }
 
@@ -195,6 +232,9 @@ function showHelpModal() {
   if (helpModal) {
     helpModal.style.display = "flex";
   }
+  if (rightPanel) {
+    rightPanel.classList.add("collapsed");
+  }
   closeToolsMenu();
 }
 
@@ -206,9 +246,11 @@ function hideHelpModal() {
 }
 
 function toggleChatPanel(forceOpen = null) {
-  const shouldOpen = forceOpen ?? chatPanel.classList.contains("collapsed");
-  chatPanel.classList.toggle("collapsed", !shouldOpen);
+  if (!rightPanel) return;
+  const shouldOpen = forceOpen ?? rightPanel.classList.contains("collapsed");
+  rightPanel.classList.toggle("collapsed", !shouldOpen);
   if (shouldOpen) {
+    setActivePanelTab("chat");
     chatInput.focus();
   }
 }
@@ -411,6 +453,7 @@ function selectFile(filePath) {
   if (fileTree) {
     fileTree.render();
   }
+  updateInfoPanel();
   
   // Load file content
   loadEditorFile();
@@ -574,6 +617,7 @@ async function loadEditorFile() {
     if (fileTree) {
       fileTree.revealFile(currentFile);
     }
+    updateInfoPanel();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(message, true);
@@ -613,6 +657,17 @@ function init() {
   chatCloseBtn.addEventListener("click", () => toggleChatPanel(false));
   chatForm.addEventListener("submit", handleChatSubmit);
   sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  if (panelChatTab) {
+    panelChatTab.addEventListener("click", () => setActivePanelTab("chat"));
+  }
+  if (panelInfoTab) {
+    panelInfoTab.addEventListener("click", () => {
+      setActivePanelTab("info");
+      if (rightPanel) {
+        rightPanel.classList.remove("collapsed");
+      }
+    });
+  }
   if (toolsMenuBtn) {
     toolsMenuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -748,6 +803,8 @@ function init() {
   }
 
   updateChatToggleState();
+  setActivePanelTab("chat");
+  updateInfoPanel();
   startGithubAutosaveTimer();
   startGithubStatusTimer();
 }
