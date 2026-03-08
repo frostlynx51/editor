@@ -41,7 +41,7 @@ export async function loadRepoMarkdownFiles({ settings }) {
   }
 }
 
-export async function fetchFileFromGithub({ settings, filePath, dailyTemplate }) {
+export async function fetchFileFromGithub({ settings, filePath, dailyTemplate, fallbackTemplate }) {
   if (!settings) throw new Error("Settings not configured");
 
   const { owner, repoName } = getRepoParts(settings);
@@ -65,6 +65,9 @@ export async function fetchFileFromGithub({ settings, filePath, dailyTemplate })
       // For daily notes, use the template; for others, return empty string
       if (filePath.startsWith(settings.dailyFolder) && dailyTemplate) {
         return dailyTemplate();
+      }
+      if (fallbackTemplate) {
+        return fallbackTemplate(filePath, settings) || "";
       }
       return "";
     }

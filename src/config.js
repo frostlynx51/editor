@@ -19,6 +19,7 @@ export const CONFIG = {
   // Default Settings
   DEFAULT_DAILY_FOLDER: "Daily Notes",
   DEFAULT_DAILY_FORMAT: "YYYY-MM-DD",
+  DEFAULT_TODO_FILE_PATH: "Todo.md",
   DEFAULT_BRANCH: "main",
   
   // UI Configuration

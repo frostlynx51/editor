@@ -24,8 +24,10 @@ const repoInput = document.getElementById("repo-input");
 const tokenInput = document.getElementById("token-input");
 const dailyFolderInput = document.getElementById("daily-folder-input");
 const dailyFormatInput = document.getElementById("daily-format-input");
+const todoFileInput = document.getElementById("todo-file-input");
 const fileSelectorBtn = document.getElementById("file-selector-btn");
 const dailyNoteBtn = document.getElementById("daily-note-btn");
+const todoBtn = document.getElementById("todo-btn");
 const currentFileEl = document.getElementById("current-file");
 const filePickerModal = document.getElementById("file-picker-modal");
 const fileCancelBtn = document.getElementById("file-cancel-btn");
@@ -42,6 +44,8 @@ const chatSendBtn = document.getElementById("chat-send-btn");
 const sidebarEl = document.getElementById("sidebar");
 const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 const fileTreeEl = document.getElementById("file-tree");
+const toolsMenuBtn = document.getElementById("tools-menu-btn");
+const toolsMenu = document.getElementById("tools-menu");
 
 let editor = null;
 let settings = null;
@@ -135,15 +139,51 @@ function toggleSidebar() {
   }
 }
 
+function normalizeTodoPath(pathValue) {
+  const trimmed = (pathValue || "").trim();
+  if (!trimmed) return CONFIG.DEFAULT_TODO_FILE_PATH;
+  if (trimmed.toLowerCase().endsWith(".md")) return trimmed;
+  return `${trimmed}.md`;
+}
+
+function getTodoFilePath() {
+  if (!settings) return CONFIG.DEFAULT_TODO_FILE_PATH;
+  return normalizeTodoPath(settings.todoFilePath || CONFIG.DEFAULT_TODO_FILE_PATH);
+}
+
+function createTodoTemplate() {
+  return "# Todo\n\n## Next\n\n- [ ] \n\n## Later\n\n- [ ] \n";
+}
+
+function openTodoFile() {
+  if (!settings) return;
+  selectFile(getTodoFilePath());
+}
+
+function closeToolsMenu() {
+  if (!toolsMenu || !toolsMenuBtn) return;
+  toolsMenu.style.display = "none";
+  toolsMenuBtn.setAttribute("aria-expanded", "false");
+}
+
+function toggleToolsMenu() {
+  if (!toolsMenu || !toolsMenuBtn) return;
+  const isOpen = toolsMenu.style.display !== "none";
+  toolsMenu.style.display = isOpen ? "none" : "flex";
+  toolsMenuBtn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+}
+
 function showSettingsModal() {
   if (settings) {
     repoInput.value = settings.repo;
     tokenInput.value = settings.token;
     dailyFolderInput.value = settings.dailyFolder || "Daily Notes";
     dailyFormatInput.value = settings.dailyFormat || "YYYY-MM-DD";
+    todoFileInput.value = settings.todoFilePath || CONFIG.DEFAULT_TODO_FILE_PATH;
     geminiKeyInput.value = settings.geminiKey || "";
   }
   settingsModal.style.display = "flex";
+  closeToolsMenu();
 }
 
 function hideSettingsModal() {
@@ -155,6 +195,7 @@ function showHelpModal() {
   if (helpModal) {
     helpModal.style.display = "flex";
   }
+  closeToolsMenu();
 }
 
 function hideHelpModal() {
@@ -500,6 +541,9 @@ async function loadEditorFile() {
           settings,
           filePath: path,
           dailyTemplate: createDailyNoteTemplate,
+          fallbackTemplate: (fallbackPath) => {
+            return fallbackPath === getTodoFilePath() ? createTodoTemplate() : "";
+          },
         });
       });
       setStatus(`Loaded ${currentFile}`);
@@ -522,6 +566,9 @@ async function loadEditorFile() {
 
     saveBtn.disabled = false;
     dailyNoteBtn.disabled = false;
+    if (todoBtn) {
+      todoBtn.disabled = false;
+    }
     
     // Reveal file in tree
     if (fileTree) {
@@ -559,10 +606,35 @@ function init() {
   cancelBtn.addEventListener("click", hideSettingsModal);
   saveBtn.addEventListener("click", () => saveAllFiles({ isAuto: false }));
   dailyNoteBtn.addEventListener("click", openDailyNote);
+  if (todoBtn) {
+    todoBtn.addEventListener("click", openTodoFile);
+  }
   chatToggleBtn.addEventListener("click", () => toggleChatPanel());
   chatCloseBtn.addEventListener("click", () => toggleChatPanel(false));
   chatForm.addEventListener("submit", handleChatSubmit);
   sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  if (toolsMenuBtn) {
+    toolsMenuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleToolsMenu();
+    });
+  }
+  if (toolsMenu) {
+    toolsMenu.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target instanceof HTMLElement && target.classList.contains("tools-menu-item")) {
+        closeToolsMenu();
+      }
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!toolsMenu || !toolsMenuBtn) return;
+    const clickTarget = e.target;
+    if (!(clickTarget instanceof Node)) return;
+    if (!toolsMenu.contains(clickTarget) && !toolsMenuBtn.contains(clickTarget)) {
+      closeToolsMenu();
+    }
+  });
   
   // Help button event listeners
   const helpBtn = document.getElementById("help-btn");
@@ -588,6 +660,13 @@ function init() {
       e.preventDefault();
       if (!dailyNoteBtn.disabled) {
         openDailyNote();
+      }
+    }
+    // Ctrl/Cmd + T: Todo file
+    else if ((e.ctrlKey || e.metaKey) && e.key === "t") {
+      e.preventDefault();
+      if (!todoBtn?.disabled) {
+        openTodoFile();
       }
     }
     // Ctrl/Cmd + ,: Settings
@@ -620,6 +699,7 @@ function init() {
     const token = tokenInput.value.trim();
     const dailyFolder = dailyFolderInput.value.trim() || "Daily Notes";
     const dailyFormat = dailyFormatInput.value.trim() || "YYYY-MM-DD";
+    const todoFilePath = normalizeTodoPath(todoFileInput.value) || CONFIG.DEFAULT_TODO_FILE_PATH;
     const geminiKey = geminiKeyInput.value.trim();
 
     if (!repo || !token) {
@@ -627,7 +707,7 @@ function init() {
       return;
     }
 
-    settings = saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey);
+    settings = saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey, todoFilePath);
     hideSettingsModal();
     updateChatToggleState();
     

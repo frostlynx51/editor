@@ -21,11 +21,17 @@
             <div class="status" id="status">Loading...</div>
             <div class="github-saved-indicator" id="github-saved-indicator">Last saved to GitHub: never</div>
           </div>
-          <button id="chat-toggle-btn" class="chat-toggle-btn" disabled>Chat</button>
-          <button id="daily-note-btn" class="daily-note-btn" disabled title="Open today's note">📓 Daily Note</button>
-          <button id="help-btn" class="help-btn" title="Help & Keyboard Shortcuts">❓</button>
-          <button id="settings-btn" class="settings-btn">⚙️</button>
           <button id="save-btn" class="save-btn" disabled>Save</button>
+          <div class="tools-menu-wrapper">
+            <button id="tools-menu-btn" class="tools-menu-btn" aria-haspopup="true" aria-expanded="false">Tools ▾</button>
+            <div id="tools-menu" class="tools-menu" style="display: none;">
+              <button id="daily-note-btn" class="tools-menu-item" disabled title="Open today's note">📓 Daily Note</button>
+              <button id="todo-btn" class="tools-menu-item" disabled title="Open todo file">✅ Todo</button>
+              <button id="chat-toggle-btn" class="tools-menu-item" disabled>💬 Chat</button>
+              <button id="help-btn" class="tools-menu-item" title="Help & Keyboard Shortcuts">❓ Help</button>
+              <button id="settings-btn" class="tools-menu-item">⚙️ Settings</button>
+            </div>
+          </div>
         </div>
       </header>
       <div class="main-container">
@@ -72,6 +78,11 @@
             <label for="daily-format-input">Daily Note Format</label>
             <input type="text" id="daily-format-input" placeholder="YYYY-MM-DD" value="YYYY-MM-DD" />
             <small style="color: #93a1a1; font-size: 0.85rem; margin-top: 0.25rem; display: block;">Use YYYY, MM, DD for date parts</small>
+          </div>
+          <div class="form-group">
+            <label for="todo-file-input">Todo File Path</label>
+            <input type="text" id="todo-file-input" placeholder="Todo.md" value="Todo.md" />
+            <small style="color: #93a1a1; font-size: 0.85rem; margin-top: 0.25rem; display: block;">Path to your todo file (relative to repo root)</small>
           </div>
           <div class="form-group">
             <label for="gemini-key-input">Gemini API Key</label>
@@ -122,6 +133,10 @@
                 <span>Open today's daily note</span>
               </div>
               <div class="shortcut-item">
+                <kbd>Ctrl/Cmd + T</kbd>
+                <span>Open configured todo file</span>
+              </div>
+              <div class="shortcut-item">
                 <kbd>Ctrl/Cmd + B</kbd>
                 <span>Toggle sidebar visibility</span>
               </div>
@@ -146,6 +161,7 @@
               <li><strong>File Tree:</strong> Browse and switch between files in your repository</li>
               <li><strong>Auto-save:</strong> Changes are automatically saved locally and synced to GitHub every 15 minutes</li>
               <li><strong>Daily Notes:</strong> Create and manage daily notes with customizable folder and date format</li>
+              <li><strong>Todo File:</strong> Jump to a configurable todo file from the Tools menu</li>
               <li><strong>AI Chat:</strong> Ask questions about your notes using Google's Gemini AI (requires API key)</li>
               <li><strong>Markdown Editor:</strong> Full-featured CodeMirror editor with syntax highlighting</li>
             </ul>
@@ -156,7 +172,7 @@
             <ol>
               <li>Click the settings (⚙️) button to configure your GitHub repository and access token</li>
               <li>Optionally add a Gemini API key to enable AI chat features</li>
-              <li>Select files from the sidebar or click "Daily Note" to start editing</li>
+              <li>Use the Tools menu for Daily Note, Todo, Chat, Help, and Settings</li>
               <li>Your changes are saved locally automatically and synced to GitHub periodically</li>
             </ol>
           </section>

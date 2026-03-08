@@ -35,19 +35,21 @@ export function loadSettings() {
       geminiKey: parsed.geminiKey || "",
       dailyFolder: parsed.dailyFolder || CONFIG.DEFAULT_DAILY_FOLDER,
       dailyFormat: parsed.dailyFormat || CONFIG.DEFAULT_DAILY_FORMAT,
+      todoFilePath: parsed.todoFilePath || CONFIG.DEFAULT_TODO_FILE_PATH,
     };
   } catch {
     return null;
   }
 }
 
-export function saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey = "") {
+export function saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey = "", todoFilePath = CONFIG.DEFAULT_TODO_FILE_PATH) {
   const settings = {
     repo,
     token,
     geminiKey: geminiKey || "",
     dailyFolder: dailyFolder || CONFIG.DEFAULT_DAILY_FOLDER,
     dailyFormat: dailyFormat || CONFIG.DEFAULT_DAILY_FORMAT,
+    todoFilePath: todoFilePath || CONFIG.DEFAULT_TODO_FILE_PATH,
   };
   localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   return settings;

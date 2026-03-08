@@ -27,10 +27,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 2rem;
+  padding: 0.9rem 1.25rem;
   background: #eee8d5;
   border-bottom: 2px solid #d3cbb7;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  gap: 1rem;
 }
 
 .header-left {
@@ -68,14 +69,14 @@ body {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.8rem;
 }
 
 .save-status {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .file-selector-btn {
@@ -132,12 +133,12 @@ body {
 }
 
 .save-btn {
-  padding: 0.5rem 1.25rem;
+  padding: 0.55rem 1.1rem;
   background: #268bd2;
   color: #fdf6e3;
   border: 1px solid #2075b8;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -159,6 +160,69 @@ body {
 
 .save-btn:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tools-menu-wrapper {
+  position: relative;
+}
+
+.tools-menu-btn {
+  padding: 0.55rem 0.9rem;
+  background: #eee8d5;
+  color: #586e75;
+  border: 1px solid #d3cbb7;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+}
+
+.tools-menu-btn:hover {
+  background: #e3ddc3;
+  border-color: #c9c0a7;
+}
+
+.tools-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  min-width: 220px;
+  background: #fff;
+  border: 2px solid #d3cbb7;
+  border-radius: 10px;
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  z-index: 30;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+}
+
+.tools-menu-item {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  background: transparent;
+  color: #586e75;
+  font-size: 0.86rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.tools-menu-item:hover:not(:disabled) {
+  background: #eee8d5;
+  border-color: #d3cbb7;
+}
+
+.tools-menu-item:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -972,4 +1036,57 @@ body {
   flex: 1;
   color: #657b83;
   font-size: 0.95rem;
+}
+
+@media (max-width: 980px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-left,
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-left {
+    gap: 0.8rem;
+  }
+
+  .header-right {
+    gap: 0.7rem;
+  }
+
+  .save-status {
+    align-items: flex-start;
+  }
+
+  .tools-menu {
+    right: auto;
+    left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 25;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebar.collapsed {
+    margin-left: -280px;
+  }
+
+  .main-container {
+    position: relative;
+  }
+
+  .cm-scroller {
+    padding: 1.25rem 1rem;
+  }
 }
