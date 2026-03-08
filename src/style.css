@@ -221,6 +221,19 @@ body {
   border-color: #d3cbb7;
 }
 
+.tools-menu-item:focus-visible,
+.tools-menu-btn:focus-visible,
+.save-btn:focus-visible,
+.panel-tab:focus-visible,
+.chat-close-btn:focus-visible,
+.chat-send-btn:focus-visible,
+.cancel-btn:focus-visible,
+.submit-btn:focus-visible,
+.sidebar-toggle-btn:focus-visible {
+  outline: 2px solid #268bd2;
+  outline-offset: 2px;
+}
+
 .tools-menu-item:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -305,6 +318,10 @@ body {
 .editor {
   flex: 1;
   overflow: hidden;
+}
+
+.right-panel-backdrop {
+  display: none;
 }
 
 .right-panel {
@@ -979,6 +996,10 @@ body {
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 2rem;
+  position: sticky;
+  bottom: 0;
+  padding-top: 0.85rem;
+  background: linear-gradient(180deg, rgba(253, 246, 227, 0) 0%, #fdf6e3 38%);
 }
 
 .submit-btn,
@@ -1155,6 +1176,10 @@ body {
     align-items: flex-start;
   }
 
+  .github-saved-indicator {
+    display: none;
+  }
+
   .tools-menu {
     right: auto;
     left: 0;
@@ -1190,6 +1215,22 @@ body {
     z-index: 24;
   }
 
+  .right-panel-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 43, 54, 0.34);
+    opacity: 1;
+    transition: opacity 0.2s ease;
+    z-index: 23;
+  }
+
+  .right-panel.collapsed + .right-panel-backdrop,
+  .right-panel-backdrop.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .right-panel.collapsed {
     width: min(92vw, 360px);
     transform: translateX(102%);
@@ -1198,5 +1239,23 @@ body {
 
   .cm-scroller {
     padding: 1.25rem 1rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .app-header {
+    padding: 0.6rem 1rem;
+  }
+
+  .save-status {
+    gap: 0;
+  }
+
+  .status {
+    font-size: 0.82rem;
+  }
+
+  .github-saved-indicator {
+    display: none;
   }
 }

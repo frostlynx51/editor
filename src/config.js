@@ -29,6 +29,7 @@ export const CONFIG = {
   // Storage Keys
   STORAGE_KEYS: {
     SETTINGS: "github-settings",
+    UI_STATE: "github-ui-state",
     CURRENT_FILE: "github-current-file",
     // Dynamic keys use these prefixes
     DRAFT_PREFIX: "github-draft",

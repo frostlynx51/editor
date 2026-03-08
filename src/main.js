@@ -6,8 +6,10 @@ import { FileTree } from "./fileTree";
 import {
   loadLastGithubSavedAt,
   loadSettings,
+  loadUiState,
   saveLastGithubSavedAt,
   saveSettings,
+  saveUiState,
 } from "./storage";
 import { CONFIG } from "./config";
 import "./style.css";
@@ -41,6 +43,7 @@ const chatMessages = document.getElementById("chat-messages");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
+const rightPanelBackdrop = document.getElementById("right-panel-backdrop");
 const rightPanel = document.getElementById("right-panel");
 const panelChatTab = document.getElementById("panel-chat-tab");
 const panelInfoTab = document.getElementById("panel-info-tab");
@@ -66,6 +69,10 @@ let isSavingToGitHub = false;
 let lastGithubSavedAt = null;
 let lastSavedContent = "";
 let isLoadingContent = false;
+let uiState = {
+  rightPanelOpen: false,
+  rightPanelTab: "chat",
+};
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -153,14 +160,29 @@ function toggleSidebar() {
   }
 }
 
+function persistUiState() {
+  saveUiState(uiState);
+}
+
+function setRightPanelOpen(isOpen) {
+  if (!rightPanel) return;
+  rightPanel.classList.toggle("collapsed", !isOpen);
+  uiState.rightPanelOpen = isOpen;
+  persistUiState();
+}
+
 function setActivePanelTab(tabName) {
   if (!panelChatTab || !panelInfoTab || !chatPanel || !infoPanel) return;
 
   const chatActive = tabName === "chat";
+  uiState.rightPanelTab = chatActive ? "chat" : "info";
   panelChatTab.classList.toggle("active", chatActive);
   panelInfoTab.classList.toggle("active", !chatActive);
+  panelChatTab.setAttribute("aria-selected", chatActive ? "true" : "false");
+  panelInfoTab.setAttribute("aria-selected", chatActive ? "false" : "true");
   chatPanel.classList.toggle("active", chatActive);
   infoPanel.classList.toggle("active", !chatActive);
+  persistUiState();
 }
 
 function updateInfoPanel() {
@@ -205,6 +227,26 @@ function toggleToolsMenu() {
   const isOpen = toolsMenu.style.display !== "none";
   toolsMenu.style.display = isOpen ? "none" : "flex";
   toolsMenuBtn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+  if (!isOpen) {
+    const firstItem = toolsMenu.querySelector(".tools-menu-item:not(:disabled)");
+    if (firstItem instanceof HTMLElement) {
+      firstItem.focus();
+    }
+  }
+}
+
+function focusAdjacentMenuItem(currentTarget, direction) {
+  if (!toolsMenu || !(currentTarget instanceof HTMLElement)) return;
+
+  const items = Array.from(toolsMenu.querySelectorAll(".tools-menu-item:not(:disabled)"));
+  const currentIndex = items.indexOf(currentTarget);
+  if (currentIndex === -1 || items.length === 0) return;
+
+  const nextIndex = (currentIndex + direction + items.length) % items.length;
+  const nextItem = items[nextIndex];
+  if (nextItem instanceof HTMLElement) {
+    nextItem.focus();
+  }
 }
 
 function showSettingsModal() {
@@ -218,7 +260,7 @@ function showSettingsModal() {
   }
   settingsModal.style.display = "flex";
   if (rightPanel) {
-    rightPanel.classList.add("collapsed");
+    setRightPanelOpen(false);
   }
   closeToolsMenu();
 }
@@ -233,7 +275,7 @@ function showHelpModal() {
     helpModal.style.display = "flex";
   }
   if (rightPanel) {
-    rightPanel.classList.add("collapsed");
+    setRightPanelOpen(false);
   }
   closeToolsMenu();
 }
@@ -248,7 +290,7 @@ function hideHelpModal() {
 function toggleChatPanel(forceOpen = null) {
   if (!rightPanel) return;
   const shouldOpen = forceOpen ?? rightPanel.classList.contains("collapsed");
-  rightPanel.classList.toggle("collapsed", !shouldOpen);
+  setRightPanelOpen(shouldOpen);
   if (shouldOpen) {
     setActivePanelTab("chat");
     chatInput.focus();
@@ -628,6 +670,10 @@ async function loadEditorFile() {
 
 function init() {
   settings = loadSettings();
+  const storedUiState = loadUiState();
+  if (storedUiState) {
+    uiState = storedUiState;
+  }
   
   // Initialize file manager
   if (settings) {
@@ -663,9 +709,7 @@ function init() {
   if (panelInfoTab) {
     panelInfoTab.addEventListener("click", () => {
       setActivePanelTab("info");
-      if (rightPanel) {
-        rightPanel.classList.remove("collapsed");
-      }
+      setRightPanelOpen(true);
     });
   }
   if (toolsMenuBtn) {
@@ -681,6 +725,34 @@ function init() {
         closeToolsMenu();
       }
     });
+    toolsMenu.addEventListener("keydown", (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        focusAdjacentMenuItem(target, 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        focusAdjacentMenuItem(target, -1);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeToolsMenu();
+        toolsMenuBtn.focus();
+      }
+    });
+  }
+  if (toolsMenuBtn) {
+    toolsMenuBtn.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (toolsMenu.style.display === "none") {
+          toggleToolsMenu();
+        }
+      } else if (e.key === "Escape") {
+        closeToolsMenu();
+      }
+    });
   }
   document.addEventListener("click", (e) => {
     if (!toolsMenu || !toolsMenuBtn) return;
@@ -690,6 +762,11 @@ function init() {
       closeToolsMenu();
     }
   });
+  if (rightPanelBackdrop) {
+    rightPanelBackdrop.addEventListener("click", () => {
+      setRightPanelOpen(false);
+    });
+  }
   
   // Help button event listeners
   const helpBtn = document.getElementById("help-btn");
@@ -803,7 +880,8 @@ function init() {
   }
 
   updateChatToggleState();
-  setActivePanelTab("chat");
+  setActivePanelTab(uiState.rightPanelTab || "chat");
+  setRightPanelOpen(Boolean(uiState.rightPanelOpen));
   updateInfoPanel();
   startGithubAutosaveTimer();
   startGithubStatusTimer();

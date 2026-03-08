@@ -55,6 +55,31 @@ export function saveSettings(repo, token, dailyFolder, dailyFormat, geminiKey = 
   return settings;
 }
 
+export function loadUiState() {
+  const stored = localStorage.getItem(CONFIG.STORAGE_KEYS.UI_STATE);
+  if (!stored) return null;
+
+  try {
+    const parsed = JSON.parse(stored);
+    return {
+      rightPanelOpen: Boolean(parsed.rightPanelOpen),
+      rightPanelTab: parsed.rightPanelTab === "info" ? "info" : "chat",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveUiState(state) {
+  if (!state) return;
+
+  const payload = {
+    rightPanelOpen: Boolean(state.rightPanelOpen),
+    rightPanelTab: state.rightPanelTab === "info" ? "info" : "chat",
+  };
+  localStorage.setItem(CONFIG.STORAGE_KEYS.UI_STATE, JSON.stringify(payload));
+}
+
 export function loadCurrentFile() {
   const stored = localStorage.getItem(CONFIG.STORAGE_KEYS.CURRENT_FILE);
   return stored || "README.md";
